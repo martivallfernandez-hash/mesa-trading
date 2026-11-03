@@ -350,90 +350,246 @@ function loadGrafico(){
   loadSenales();
 }
 
-// ---------- Gráfico señalado (datos del escáner) ----------
+// ---------- Gráfico en vivo que señala dónde comprar y vender ----------
+// Precios en tiempo real de Kraken (forex, oro y cripto). AUDCAD = AUDUSD × USDCAD.
+// NZDCAD no cotiza en Kraken: usa las velas que publica el escáner cada 5 minutos.
 const DATA_URL = location.hostname==="localhost" ? "datos-prueba.json" : "https://raw.githubusercontent.com/martivallfernandez-hash/mesa-trading/datos/datos.json";
-const SIG_ASSETS = ["AUDCAD","NZDCAD","EURUSD","GBPUSD","USDJPY","AUDUSD","XAUUSD","BTCUSDT","ETHUSDT"];
-let datos = null, lw = null, lwSeries = null, lwLines = [], sigTf = "15", sigMode = "ambas", marcado = false;
+const VIVO = {
+  AUDCAD: {legs:[["AUDUSD","AUD/USD"],["USDCAD","USD/CAD"]]},
+  NZDCAD: {legs:null},
+  EURUSD: {legs:[["EURUSD","EUR/USD"]]},
+  GBPUSD: {legs:[["GBPUSD","GBP/USD"]]},
+  USDJPY: {legs:[["USDJPY","USD/JPY"]]},
+  AUDUSD: {legs:[["AUDUSD","AUD/USD"]]},
+  XAUUSD: {legs:[["PAXGUSD","PAXG/USD"]], nota:"Oro vía PAXG (token respaldado por oro): puede diferir unos dólares del XAUUSD de tu broker."},
+  BTCUSDT:{legs:[["XBTUSD","BTC/USD"]]},
+  ETHUSDT:{legs:[["ETHUSD","ETH/USD"]]},
+};
+const SIG_ASSETS = Object.keys(VIVO);
+const DEC = {AUDCAD:5, NZDCAD:5, EURUSD:5, GBPUSD:5, USDJPY:3, AUDUSD:5, XAUUSD:2, BTCUSDT:1, ETHUSDT:2};
+let lw=null, lwSeries=null, lwLines=[], sigTf=15, sigMode="ambas", marcado=false;
+let st = null;          // estado del activo mostrado: velas por temporalidad, análisis, último precio
+let ws = null, wsLegs = [], lastLeg = {}, analTimer = null, datosEsc = null;
+
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function madrid(t, withDay){ return new Date(t*1000).toLocaleString("es-ES",{timeZone:"Europe/Madrid", ...(withDay?{day:"2-digit",month:"2-digit"}:{}), hour:"2-digit", minute:"2-digit"}); }
+
+// ----- Datos -----
+async function krakenOHLC(pair, tf){
+  const r = await fetch(`https://api.kraken.com/0/public/OHLC?pair=${pair}&interval=${tf}`).then(r=>r.json());
+  if(r.error && r.error.length) throw new Error(r.error.join(", "));
+  const k = Object.values(r.result).find(Array.isArray);
+  return k.map(c=>({time:+c[0], open:+c[1], high:+c[2], low:+c[3], close:+c[4]}));
+}
+function combinar(a, b){ // vela sintética A×B alineada por tiempo
+  const m = new Map(b.map(c=>[c.time,c])), out = [];
+  let prevB = null;
+  for(const x of a){ const y = m.get(x.time) || (prevB && {time:x.time, open:prevB.close, high:prevB.close, low:prevB.close, close:prevB.close}); if(!y) continue; prevB = y;
+    const o = x.open*y.open, c = x.close*y.close;
+    out.push({time:x.time, open:o, close:c, high:Math.max(o,c,x.high*y.close,x.close*y.high), low:Math.min(o,c,x.low*y.close,x.close*y.low)}); }
+  return out;
+}
+async function historia(id, tf){
+  const v = VIVO[id];
+  if(!v.legs){
+    if(!datosEsc) datosEsc = await fetch(DATA_URL+"?t="+Date.now(),{cache:"no-store"}).then(r=>r.json());
+    const a = datosEsc.activos[id]; if(!a) throw new Error("sin datos del escáner");
+    const k = {5:"velas5",15:"velas15",30:"velas30",60:"velas1h"}[tf];
+    return (a[k]||[]).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
+  }
+  const series = await Promise.all(v.legs.map(([p])=>krakenOHLC(p, tf)));
+  return limpiar(series.length===1 ? series[0] : combinar(series[0], series[1]));
+}
+function limpiar(v){ // quita picos de operaciones sueltas: mechas mucho mayores que lo normal
+  if(v.length<20) return v;
+  const rangos = v.map(c=>c.high-c.low).sort((a,b)=>a-b), med = rangos[Math.floor(rangos.length/2)] || 0;
+  if(!med) return v;
+  v.forEach((c,i)=>{ const prev = i? v[i-1].close : c.open;
+    if(Math.abs(c.open-prev) > 6*med) c.open = prev;
+    const top = Math.max(c.open,c.close), bot = Math.min(c.open,c.close);
+    if(c.high-top > 4*med) c.high = top + med;
+    if(bot-c.low > 4*med) c.low = bot - med; });
+  return v;
+}
+
+// ----- Análisis (misma lógica que el escáner) -----
+const emaA = (xs,n)=>{ const k=2/(n+1), o=[]; xs.forEach(x=>o.push(o.length? x*k+o[o.length-1]*(1-k) : x)); return o; };
+function atrA(v,n=14){ const tr=v.slice(1).map((c,i)=>Math.max(c.high-c.low, Math.abs(c.high-v[i].close), Math.abs(c.low-v[i].close)));
+  let a = tr.slice(0,n).reduce((s,x)=>s+x,0)/n; tr.slice(n).forEach(t=>a=(a*(n-1)+t)/n); return a; }
+function rsiA(cs,n=14){ let g=0,l=0; for(let i=1;i<=n;i++){ const d=cs[i]-cs[i-1]; g+=Math.max(d,0); l+=Math.max(-d,0);} g/=n; l/=n;
+  for(let i=n+1;i<cs.length;i++){ const d=cs[i]-cs[i-1]; g=(g*(n-1)+Math.max(d,0))/n; l=(l*(n-1)+Math.max(-d,0))/n; } return l===0?100:100-100/(1+g/l); }
+function tendA(v){ const cs=v.map(c=>c.close), e20=emaA(cs,20), e50=emaA(cs,50), p=cs[cs.length-1], n=cs.length-1, pend=e50[n]-e50[n-5];
+  if(p>e20[n] && e20[n]>e50[n] && pend>0) return "alcista"; if(p<e20[n] && e20[n]<e50[n] && pend<0) return "bajista"; return "lateral"; }
+const diaUTC = t => Math.floor(t/86400);
+function zonasA(v15, tol){
+  const hoy = diaUTC(v15[v15.length-1].time), dias = [...new Set(v15.map(c=>diaUTC(c.time)))].filter(d=>d<hoy), ayer = dias.length? Math.max(...dias) : hoy;
+  const niv = [];
+  [["hoy",hoy],["ayer",ayer]].forEach(([nom,d])=>{ const dv=v15.filter(c=>diaUTC(c.time)===d); if(dv.length){ niv.push([Math.max(...dv.map(c=>c.high)),`máximo de ${nom}`],[Math.min(...dv.map(c=>c.low)),`mínimo de ${nom}`]); } });
+  const rec = v15.filter(c=>diaUTC(c.time)>=ayer), k=3;
+  for(let i=k;i<rec.length-k;i++){ const w=rec.slice(i-k,i+k+1);
+    if(rec[i].high===Math.max(...w.map(c=>c.high))) niv.push([rec[i].high,"giro previo"]);
+    if(rec[i].low===Math.min(...w.map(c=>c.low))) niv.push([rec[i].low,"giro previo"]); }
+  niv.sort((a,b)=>a[0]-b[0]);
+  const g=[]; for(const [p,n] of niv){ const u=g[g.length-1];
+    if(u && p-u.hasta<=tol){ u.hasta=p; u.toques++; if(n!=="giro previo" && !u.notas.includes(n)) u.notas.push(n); }
+    else g.push({desde:p, hasta:p, toques:1, notas:n==="giro previo"?[]:[n]}); }
+  g.forEach(z=>z.fuerza=Math.min(3,z.toques)+(z.notas.length?1:0)); return g;
+}
+function planA(dir, z, precio, opuestas, a15, objDia){
+  let entrada, stop, obj;
+  if(dir==="compra"){ entrada=z.hasta; stop=Math.min(z.desde-0.3*a15, entrada-a15);
+    const c=opuestas.map(o=>o.desde).filter(x=>x>entrada+(entrada-stop)*1.2); obj=c.length?Math.min(...c):objDia; }
+  else { entrada=z.desde; stop=Math.max(z.hasta+0.3*a15, entrada+a15);
+    const c=opuestas.map(o=>o.hasta).filter(x=>x<entrada-(stop-entrada)*1.2); obj=c.length?Math.max(...c):objDia; }
+  return {direccion:dir, entrada, stop, objetivo:obj, rr:Math.abs(obj-entrada)/Math.abs(entrada-stop)};
+}
+function analizarA(v15all, v1h){
+  const v15 = v15all.slice(0,-1), precio = v15all[v15all.length-1].close; // última vela aún abierta
+  const a15 = atrA(v15), t1h = tendA(v1h), t15 = tendA(v15);
+  const zs = zonasA(v15, 0.35*a15);
+  const sop = zs.filter(z=>z.hasta < precio-0.1*a15), res = zs.filter(z=>z.desde > precio+0.1*a15);
+  const s = sop.sort((a,b)=>b.hasta-a.hasta)[0], r = res.sort((a,b)=>a.desde-b.desde)[0];
+  const hoy = diaUTC(v15all[v15all.length-1].time), dv = v15all.filter(c=>diaUTC(c.time)===hoy);
+  const maxd = dv.length? Math.max(...dv.map(c=>c.high)) : precio, mind = dv.length? Math.min(...dv.map(c=>c.low)) : precio;
+  const planes = [];
+  if(s) planes.push(planA("compra", s, precio, res, a15, maxd>precio?maxd:precio+2*a15));
+  if(r) planes.push(planA("venta", r, precio, sop, a15, mind<precio?mind:precio-2*a15));
+  planes.forEach(p=>p.a_favor=(p.direccion==="compra"&&t1h==="alcista")||(p.direccion==="venta"&&t1h==="bajista"));
+  // Señal: la última vela de 15 min cerrada rechaza una zona sin ir contra la tendencia de 1 h
+  const c = v15[v15.length-1], cuerpo = Math.abs(c.close-c.open)||1e-12; let senal=null;
+  const cerca = x => zs.filter(z=>z.desde-0.25*a15<=x && x<=z.hasta+0.25*a15).sort((a,b)=>b.fuerza-a.fuerza)[0];
+  const zb = cerca(c.low), za = cerca(c.high);
+  const cand = [];
+  if(zb && c.close>c.open && Math.min(c.open,c.close)-c.low>=cuerpo && t1h!=="bajista") cand.push(["compra",zb]);
+  if(za && c.close<c.open && c.high-Math.max(c.open,c.close)>=cuerpo && t1h!=="alcista") cand.push(["venta",za]);
+  for(const [dir,z] of cand){
+    const entrada=c.close, stop = dir==="compra" ? Math.min(Math.min(c.low,z.desde)-0.3*a15, entrada-a15) : Math.max(Math.max(c.high,z.hasta)+0.3*a15, entrada+a15);
+    const op = dir==="compra" ? res.map(x=>x.desde).filter(x=>x>entrada) : sop.map(x=>x.hasta).filter(x=>x<entrada);
+    const obj = op.length ? (dir==="compra"?Math.min(...op):Math.max(...op)) : entrada+(entrada-stop)*2;
+    const rr = Math.abs(obj-entrada)/Math.abs(entrada-stop); if(rr<1.5) continue;
+    senal = {direccion:dir, entrada, stop, objetivo:obj, rr, time:c.time, motivo:`vela de 15 min rechazando ${z.notas.join(", ")||"una zona con "+z.toques+" toques"}`}; break;
+  }
+  return {precio, t1h, t15, rsi:rsiA(v15.map(x=>x.close)), atr:a15, zonas:zs, planes, senal, generado:Date.now()};
+}
+
+// ----- Interfaz -----
 function loadSenales(){
   const sel = $("#sig-asset");
-  sel.innerHTML = SIG_ASSETS.map(id=>`<option value="${id}">${byId[id].label||id}</option>`).join("");
-  sel.value = SIG_ASSETS.includes(store.get("symbol","AUDCAD")) ? store.get("symbol","AUDCAD") : "AUDCAD";
-  if(!window.LightweightCharts){ $("#sig-note").textContent = "No se ha podido cargar el gráfico. Revisa la conexión y recarga."; return; }
+  sel.innerHTML = SIG_ASSETS.map(id=>`<option value="${id}">${(byId[id]&&byId[id].label)||id}${VIVO[id].legs?"":" (cada 5 min)"}</option>`).join("");
+  sel.value = SIG_ASSETS.includes(store.get("sigasset","AUDCAD")) ? store.get("sigasset","AUDCAD") : "AUDCAD";
+  if(!window.LightweightCharts){ $("#sig-note").textContent="No se ha podido cargar el gráfico. Revisa la conexión y recarga."; return; }
   lw = LightweightCharts.createChart($("#sig-chart"), {
     autoSize:true, crosshair:{mode:0},
     layout:{background:{type:"solid", color:cssVar("--panel")}, textColor:cssVar("--muted"), fontFamily:cssVar("--mono")},
     grid:{vertLines:{color:cssVar("--line")}, horzLines:{color:cssVar("--line")}},
     rightPriceScale:{borderColor:cssVar("--line")},
-    timeScale:{borderColor:cssVar("--line"), timeVisible:true, secondsVisible:false, tickMarkFormatter:t=>madrid(t)},
+    timeScale:{borderColor:cssVar("--line"), timeVisible:true, secondsVisible:false, tickMarkFormatter:t=>madrid(t), rightOffset:6},
     localization:{locale:"es-ES", timeFormatter:t=>madrid(t,true)}
   });
   lwSeries = lw.addCandlestickSeries({upColor:cssVar("--up"), downColor:cssVar("--down"), borderVisible:false, wickUpColor:cssVar("--up"), wickDownColor:cssVar("--down")});
   const seg = (id, set) => $(id).addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
-    $(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); set(b.dataset.v); pintar(marcado); });
-  seg("#sig-tf", v=>sigTf=v); seg("#sig-mode", v=>sigMode=v);
-  sel.addEventListener("change", ()=>{ marcado=false; pintar(false); });
-  $("#sig-go").addEventListener("click", async ()=>{ await cargarDatos(true); marcado = true; pintar(true); });
-  cargarDatos(false).then(()=>pintar(false));
+    $(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); set(b.dataset.v); });
+  seg("#sig-tf", v=>{ sigTf=+v; abrir(sel.value, false); });
+  seg("#sig-mode", v=>{ sigMode=v; dibujarMarcas(); });
+  sel.addEventListener("change", ()=>{ store.set("sigasset", sel.value); marcado=false; abrir(sel.value, true); });
+  $("#sig-go").addEventListener("click", ()=>{ marcado=true; recalcular(); });
+  abrir(sel.value, true);
 }
-async function cargarDatos(force){
-  if(datos && !force) return datos;
-  $("#sig-age").textContent = "Cargando datos…";
-  try{ datos = await fetch(DATA_URL+"?t="+Date.now(), {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }); }
-  catch{ $("#sig-age").textContent = ""; $("#sig-note").className="verdict bad"; $("#sig-note").textContent = "No hay datos del escáner todavía. Se publican cada 5 minutos de lunes a viernes de 8:00 a 22:00."; return null; }
-  const min = Math.round((Date.now()/1000 - datos.generado)/60);
-  $("#sig-age").textContent = `Datos de hace ${min} min${min>20?" (el escáner solo funciona L-V de 8 a 22)":""}`;
-  return datos;
+
+async function abrir(id, nuevoActivo){
+  const note = $("#sig-note"), age = $("#sig-age");
+  age.textContent = "Cargando velas…";
+  try{
+    const pedir = [historia(id, sigTf)];
+    if(nuevoActivo || !st || st.id!==id){ pedir.push(historia(id,15), historia(id,60)); }
+    const [vis, v15, v1h] = await Promise.all(pedir);
+    if(nuevoActivo || !st || st.id!==id) st = {id, v15, v1h, anal:null};
+    st.vis = sigTf===15 ? st.v15 : sigTf===60 ? st.v1h : vis;
+    if(!st.vis.length) throw new Error("sin velas");
+    lwSeries.setData(st.vis.map(c=>Object.assign({},c)));
+    const dec = DEC[id]; lwSeries.applyOptions({priceFormat:{type:"price", precision:dec, minMove:Math.pow(10,-dec)}});
+    lw.timeScale().setVisibleLogicalRange({from:Math.max(0, vis.length-({5:120,15:96,30:96,60:72}[sigTf])), to:vis.length+6});
+    st.anal = analizarA(st.v15, st.v1h);
+    dibujarMarcas();
+    conectar(id);
+  }catch(e){ age.textContent=""; note.className="verdict bad"; note.textContent="No se han podido cargar los precios ("+(e.message||e)+"). Prueba otra vez en unos segundos."; }
 }
-function pintar(marcar){
-  if(!lw || !datos) return;
-  const a = datos.activos[$("#sig-asset").value];
-  const note = $("#sig-note"), info = $("#sig-info");
-  if(!a){ note.className="verdict warn"; note.textContent="No hay datos de este activo en la última actualización."; return; }
-  const dec = a.decimales, f = x => (+x).toFixed(dec);
-  const fuente = {"5":a.velas5, "15":a.velas15, "30":a.velas30, "60":a.velas1h}[sigTf] || a.velas15;
-  const velas = fuente.map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
-  lwSeries.setData(velas);
-  lwSeries.applyOptions({priceFormat:{type:"price", precision:dec, minMove:Math.pow(10,-dec)}});
-  lwLines.forEach(l=>lwSeries.removePriceLine(l)); lwLines = []; lwSeries.setMarkers([]);
-  lw.timeScale().setVisibleLogicalRange({from: Math.max(0, velas.length - ({"5":120,"15":96,"30":96,"60":72}[sigTf])), to: velas.length + 4});
-  if(!marcar){ info.innerHTML=""; note.className="verdict"; note.textContent="Pulsa «Señalar compra y venta» para marcar las zonas y la mejor entrada."; return; }
-  const line = (price, color, title, style=0, width=1, label=true) => lwLines.push(lwSeries.createPriceLine({price:+price, color, lineWidth:width, lineStyle:style, axisLabelVisible:label, title}));
-  const up = cssVar("--up"), down = cssVar("--down"), muted = cssVar("--muted");
-  // Zonas: las más cercanas al precio, en tono suave
-  const zonas = (a.zonas||[]).slice().sort((x,y)=>Math.abs((x.desde+x.hasta)/2-a.precio)-Math.abs((y.desde+y.hasta)/2-a.precio)).slice(0,6);
-  zonas.forEach(z=>{ const col = (z.hasta < a.precio ? up : down) + "66";
-    line(z.hasta, col, "", 2, 1, false); if(z.desde!==z.hasta) line(z.desde, col, "", 2, 1, false); });
-  // Planes
-  const planes = (a.planes||[]).filter(p=>sigMode==="ambas" || p.direccion===sigMode);
-  planes.forEach(p=>{ const c = p.direccion==="compra" ? up : down, tag = p.direccion==="compra" ? "COMPRA" : "VENTA";
-    line(p.entrada, c, `${tag}${p.a_favor?" ★":""}`, 0, p.a_favor?3:2);
-    line(p.stop, down, `Stop ${p.direccion}`, 1, 1);
-    line(p.objetivo, up, `Objetivo ${p.direccion}`, 1, 1); });
-  // Señal activa: flecha en la vela que la dio
-  const s = a.senal;
-  if(s && (sigMode==="ambas" || s.direccion===sigMode)){
-    const tf = +sigTf * 60;
-    let t = s.ts ? (tf >= 900 ? s.ts - (s.ts % tf) : s.ts + 600) : velas[velas.length-2].time;  // en 5 min, la última vela de 5 dentro de la de 15
-    if(!velas.some(v=>v.time===t)) t = velas[velas.length-2].time;
-    lwSeries.setMarkers([{time:t, position: s.direccion==="compra"?"belowBar":"aboveBar", color: s.direccion==="compra"?up:down, shape: s.direccion==="compra"?"arrowUp":"arrowDown", text:`${s.direccion.toUpperCase()} ${s.puntos}/100`}]);
-    line(s.entrada, s.direccion==="compra"?up:down, `SEÑAL ${s.direccion}`, 0, 3);
+
+function recalcular(){ if(!st) return; st.anal = analizarA(st.v15, st.v1h); dibujarMarcas(); }
+
+function dibujarMarcas(){
+  if(!st || !st.anal) return;
+  const a = st.anal, dec = DEC[st.id], f = x=>(+x).toFixed(dec), note=$("#sig-note"), info=$("#sig-info");
+  lwLines.forEach(l=>lwSeries.removePriceLine(l)); lwLines=[]; lwSeries.setMarkers([]);
+  const up=cssVar("--up"), down=cssVar("--down");
+  const line=(p,c,t,s=0,w=1,lab=true)=>lwLines.push(lwSeries.createPriceLine({price:+p, color:c, lineWidth:w, lineStyle:s, axisLabelVisible:lab, title:t}));
+  pintarEstado();
+  if(!marcado){ info.innerHTML=""; note.className="verdict"; note.textContent="El gráfico se mueve en directo. Pulsa «Señalar compra y venta» para marcar las zonas y la mejor entrada."; return; }
+  a.zonas.slice().sort((x,y)=>Math.abs((x.desde+x.hasta)/2-a.precio)-Math.abs((y.desde+y.hasta)/2-a.precio)).slice(0,6)
+    .forEach(z=>{ const c=(z.hasta<a.precio?up:down)+"66"; line(z.hasta,c,"",2,1,false); if(z.desde!==z.hasta) line(z.desde,c,"",2,1,false); });
+  const planes = a.planes.filter(p=>sigMode==="ambas"||p.direccion===sigMode);
+  planes.forEach(p=>{ const c=p.direccion==="compra"?up:down;
+    line(p.entrada,c,`${p.direccion==="compra"?"COMPRA":"VENTA"}${p.a_favor?" ★":""}`,0,p.a_favor?3:2);
+    line(p.stop,down,`Stop ${p.direccion}`,1,1); line(p.objetivo,up,`Objetivo ${p.direccion}`,1,1); });
+  const s=a.senal;
+  if(s && (sigMode==="ambas"||s.direccion===sigMode)){
+    const tf=sigTf*60, t = sigTf>=15 ? s.time-(s.time%tf) : s.time+600;
+    if(st.vis.some(v=>v.time===t)) lwSeries.setMarkers([{time:t, position:s.direccion==="compra"?"belowBar":"aboveBar", color:s.direccion==="compra"?up:down, shape:s.direccion==="compra"?"arrowUp":"arrowDown", text:"SEÑAL "+s.direccion.toUpperCase()}]);
+    line(s.entrada, s.direccion==="compra"?up:down, "SEÑAL "+s.direccion, 0, 3);
   }
-  // Panel de explicación
-  const best = (a.planes||[]).find(p=>p.a_favor) || (a.planes||[])[0];
   info.innerHTML = [
-    ["", "Precio", f(a.precio)],
-    ["", "Tendencia 1 h", a.tendencia_1h, a.tendencia_1h==="alcista"?"up":a.tendencia_1h==="bajista"?"down":""],
-    ["", "Tendencia 15 min", a.tendencia_15m, a.tendencia_15m==="alcista"?"up":a.tendencia_15m==="bajista"?"down":""],
-    ...planes.map(p=>[p.a_favor?"big":"", `${p.direccion==="compra"?"Compra":"Venta"}${p.a_favor?" ★ a favor":""}`, `${f(p.entrada)} · R:B 1:${(+p.rr).toFixed(1)}`, p.direccion==="compra"?"up":"down"]),
-  ].map(([cl,k,v,col=""])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}" style="font-size:16px">${v}</div></div>`).join("");
+    ["","Tendencia 1 h",a.t1h,a.t1h==="alcista"?"up":a.t1h==="bajista"?"down":""],
+    ["","Tendencia 15 min",a.t15,a.t15==="alcista"?"up":a.t15==="bajista"?"down":""],
+    ...planes.map(p=>[p.a_favor?"big":"", `${p.direccion==="compra"?"Compra":"Venta"}${p.a_favor?" ★ a favor":""}`, `${f(p.entrada)} · R:B 1:${p.rr.toFixed(1)}`, p.direccion==="compra"?"up":"down"]),
+  ].map(([cl,k,v,col])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}" style="font-size:16px">${v}</div></div>`).join("");
+  const best = a.planes.find(p=>p.a_favor) || a.planes[0];
   let cls="warn", msg;
-  if(s){ cls="ok"; msg = `Señal activa (${s.puntos}/100): ${s.direccion} en ${f(s.entrada)}, stop ${f(s.stop)}, objetivo ${f(s.objetivo)}, R:B 1:${(+s.rr).toFixed(1)}. ${s.motivo}. Compruébalo en tu MetaTrader antes de entrar.`; }
-  else if(best){ const q = best.direccion==="compra" ? "baja" : "sube";
-    msg = `Sin señal ahora. La mejor opción${best.a_favor?" (a favor de la tendencia de 1 h)":""} es ${best.direccion==="compra"?"comprar":"vender"} si el precio ${q} a ${f(best.entrada)} y una vela de 15 min rechaza esa zona. Stop ${f(best.stop)}, objetivo ${f(best.objetivo)}, R:B 1:${(+best.rr).toFixed(1)}.${+best.rr<1.5?" El R:B es bajo: mejor esperar.":""} Pon una alerta en ese precio.`; }
-  else msg = "No hay zonas claras cerca del precio: mejor esperar.";
-  note.className = "verdict "+cls; note.textContent = msg;
+  if(s){ cls="ok"; msg=`Señal activa: ${s.direccion} en ${f(s.entrada)}, stop ${f(s.stop)}, objetivo ${f(s.objetivo)}, R:B 1:${s.rr.toFixed(1)}. ${s.motivo}. Compruébalo en tu MetaTrader antes de entrar.`; }
+  else if(best){ msg=`Sin señal ahora. La mejor opción${best.a_favor?" (a favor de la tendencia de 1 h)":""} es ${best.direccion==="compra"?"comprar":"vender"} si el precio ${best.direccion==="compra"?"baja":"sube"} a ${f(best.entrada)} y una vela de 15 min rechaza esa zona. Stop ${f(best.stop)}, objetivo ${f(best.objetivo)}, R:B 1:${best.rr.toFixed(2)}.${best.rr<1.5?" El R:B es bajo: mejor esperar.":""}`; }
+  else msg="No hay zonas claras cerca del precio: mejor esperar.";
+  if(VIVO[st.id].nota) msg += " " + VIVO[st.id].nota;
+  note.className="verdict "+cls; note.textContent=msg;
+}
+
+function pintarEstado(){
+  if(!st) return;
+  const vivo = !!VIVO[st.id].legs, p = st.v15[st.v15.length-1].close, dec = DEC[st.id];
+  const enZona = marcado && st.anal && st.anal.planes.find(pl=>Math.abs(p-pl.entrada) <= 0.25*st.anal.atr);
+  $("#sig-age").innerHTML = (vivo ? `<span class="dot ${ws&&ws.readyState===1?"live":""}"></span> En vivo · ` : `Datos del escáner (cada 5 min) · `) +
+    `<span class="num">${p.toFixed(dec)}</span>` + (enZona ? ` · <b class="${enZona.direccion==="compra"?"up":"down"}">el precio está en la zona de ${enZona.direccion}</b>` : "");
+}
+
+// ----- Tiempo real -----
+function conectar(id){
+  if(ws){ ws.onclose=null; ws.close(); ws=null; }
+  clearInterval(analTimer);
+  const v = VIVO[id];
+  if(!v.legs){ analTimer = setInterval(async ()=>{ datosEsc=null; await abrir(id,true); }, 5*60*1000); return; }
+  wsLegs = v.legs.map(l=>l[1]); lastLeg = {};
+  ws = new WebSocket("wss://ws.kraken.com/v2");
+  ws.onopen = ()=>{ ws.send(JSON.stringify({method:"subscribe", params:{channel:"ticker", symbol:wsLegs, event_trigger:"bbo"}})); pintarEstado(); };
+  ws.onmessage = e=>{ const m = JSON.parse(e.data); if(m.channel!=="ticker" || !m.data) return;
+    m.data.forEach(d=>{ lastLeg[d.symbol] = (+d.bid + +d.ask)/2 || +d.last; });
+    if(wsLegs.some(s=>!lastLeg[s])) return;
+    tickPrecio(wsLegs.reduce((acc,s)=>acc*lastLeg[s],1));
+  };
+  ws.onclose = ()=>{ pintarEstado(); setTimeout(()=>{ if(st && st.id===id) conectar(id); }, 3000); };
+  // Recalcula el análisis cada minuto por si ha cerrado una vela de 15 min
+  analTimer = setInterval(()=>{ if(st && st.id===id){ recalcular(); } }, 60*1000);
+}
+function sumar(arr, tfMin, price, now){
+  const t0 = now - (now % (tfMin*60)), u = arr[arr.length-1];
+  if(u && Math.abs(price-u.close) > 20*(st.anal?st.anal.atr:Infinity)/ (tfMin>=15?1:3)) return {nuevo:false, vela:u}; // tick erróneo
+  if(u && u.time===t0){ u.close=price; u.high=Math.max(u.high,price); u.low=Math.min(u.low,price); return {nuevo:false, vela:u}; }
+  const v = {time:t0, open:u?u.close:price, high:Math.max(price,u?u.close:price), low:Math.min(price,u?u.close:price), close:price}; arr.push(v); return {nuevo:true, vela:v};
+}
+function tickPrecio(price){
+  if(!st) return;
+  const now = Math.floor(Date.now()/1000);
+  const r15 = sumar(st.v15, 15, price, now); sumar(st.v1h, 60, price, now);
+  const rv = sigTf===15 ? r15 : sigTf===60 ? {vela:st.v1h[st.v1h.length-1]} : sumar(st.vis, sigTf, price, now);
+  lwSeries.update(Object.assign({}, rv.vela));
+  if(r15.nuevo) recalcular(); else pintarEstado();
 }
 
 // ---------- Cripto en vivo (Binance) ----------
