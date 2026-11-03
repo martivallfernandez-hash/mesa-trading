@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>Mesa de Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Terminal oscuro: barra de sesiones arriba, vistas en pestañas, navegación inferior en móvil */
+:root{
+  --bg:#0b0f14; --panel:#121821; --panel-2:#18202b; --line:#243041;
+  --fg:#e3e9f1; --muted:#8a97a8; --accent:#4fa3ff;
+  --up:#26b386; --down:#ef5350; --warn:#e6a23c;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px}
+body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+@media (min-width:900px){body{padding-bottom:0}}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Barra superior */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.brand i{width:9px;height:9px;border-radius:2px;background:var(--accent);display:inline-block}
+.clock{font-family:var(--mono);color:var(--muted)}
+.sessions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.sess{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);display:flex;gap:6px;align-items:center}
+.sess b{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.sess.on{color:var(--fg);border-color:#2c5a46}
+.sess.on b{background:var(--up);box-shadow:0 0 6px var(--up)}
+.tabs{display:none;gap:4px}
+@media (min-width:900px){.tabs{display:flex}}
+.tab{background:none;border:0;padding:6px 12px;border-radius:6px;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--panel-2);color:var(--fg)}
+
+/* Navegación inferior (móvil) */
+.bottom{position:fixed;inset:auto 0 0 0;z-index:20;background:var(--panel);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:900px){.bottom{display:none}}
+.bottom .tab{padding:14px 4px;border-radius:0;font-size:13px}
+.bottom .tab[aria-selected="true"]{background:none;color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
+
+main{padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1400px;margin:0 auto}
+.view{display:grid;gap:16px}
+.view[hidden]{display:none!important}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.panel h2{margin:0 0 10px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grid-2{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:900px){.grid-2{grid-template-columns:2fr 1fr}}
+.tv{min-height:120px}
+.chart-box{height:min(70vh,640px);min-height:380px}
+
+/* Cripto en vivo */
+.tickers{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tk{background:var(--panel-2);border-radius:6px;padding:10px 12px;display:grid;gap:2px}
+.tk .sym{font-size:12px;color:var(--muted)}
+.tk .px{font-size:18px;font-weight:500}
+.tk .ch{font-size:12px}
+.flash-up{animation:fu .6s} .flash-down{animation:fd .6s}
+@keyframes fu{from{background:rgba(38,179,134,.25)}} @keyframes fd{from{background:rgba(239,83,80,.25)}}
+@media (prefers-reduced-motion:reduce){.flash-up,.flash-down{animation:none}}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.dot.live{background:var(--up)}
+
+/* Formularios */
+.form{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+input,select,textarea{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:60px}
+.btn{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#06121f;font-weight:600}
+.btn.danger{color:var(--down)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:none;border:0;padding:8px 14px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg)}
+.seg button[data-v="buy"][aria-pressed="true"]{color:var(--up)}
+.seg button[data-v="sell"][aria-pressed="true"]{color:var(--down)}
+
+/* Resultado de la calculadora */
+.result{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-top:14px}
+.kpi{background:var(--panel-2);border-radius:6px;padding:10px 12px}
+.kpi .k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.kpi .v{font-family:var(--mono);font-size:20px;margin-top:2px}
+.kpi.big .v{font-size:26px;color:var(--accent)}
+.verdict{margin-top:12px;padding:10px 12px;border-radius:6px;border-left:3px solid var(--muted);background:var(--panel-2)}
+.verdict.ok{border-color:var(--up)} .verdict.warn{border-color:var(--warn)} .verdict.bad{border-color:var(--down)}
+
+/* Diario */
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+td.note{white-space:normal;min-width:180px;color:var(--muted)}
+.pill{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--panel-2)}
+.pill.buy{color:var(--up)} .pill.sell{color:var(--down)}
+canvas{width:100%;height:220px;display:block}
+.empty{color:var(--muted);padding:20px 0;text-align:center}
+.foot{color:var(--muted);font-size:12px;line-height:1.5;max-width:75ch}
+.toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line);padding:10px 16px;border-radius:6px;z-index:30}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><i></i>Mesa de Trading</div>
+  <div class="clock num" id="clock">--:--:--</div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
+    <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
+    <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+    <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
+  </nav>
+  <div class="sessions" id="sessions" aria-label="Sesiones de mercado"></div>
+</header>
+
+<main>
+  <!-- MERCADO -->
+  <section class="view" id="v-mercado">
+    <div class="tv" id="tape"></div>
+    <div class="panel">
+      <h2><span>Cripto en vivo</span><span class="row" style="font-weight:400;letter-spacing:0;text-transform:none"><span class="dot" id="wsdot"></span><span id="wsstate">Conectando…</span></span></h2>
+      <div class="tickers" id="tickers"></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Divisas principales</h2><div class="tv" id="fxmatrix" style="height:420px"></div></div>
+      <div class="panel"><h2>Calendario económico</h2><div class="tv" id="calendar" style="height:420px"></div></div>
+    </div>
+  </section>
+
+  <!-- GRÁFICO -->
+  <section class="view" id="v-grafico" hidden>
+    <div class="panel">
+      <h2><span>Gráfico</span>
+        <select id="symbol" aria-label="Activo" style="width:auto;text-transform:none;letter-spacing:0;font-weight:400"></select>
+      </h2>
+      <div class="chart-box" id="chart"></div>
+    </div>
+    <div class="grid-2">
+      <div class="panel"><h2>Resumen técnico (indicadores)</h2><div class="tv" id="ta" style="height:420px"></div></div>
+      <div class="panel">
+        <h2>Antes de entrar</h2>
+        <ol class="foot" style="padding-left:18px;margin:0;display:grid;gap:6px">
+          <li>¿Qué dice el marco superior (H4 o diario)?</li>
+          <li>¿Dónde queda invalidada la idea? Ese es tu stop.</li>
+          <li>¿El objetivo da al menos 1,5 veces el riesgo?</li>
+          <li>¿Hay noticias de alto impacto en las próximas horas?</li>
+          <li>¿Ya tienes otra operación con la misma divisa?</li>
+          <li>Calcula el tamaño en la pestaña Riesgo y apúntala en el Diario.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIESGO -->
+  <section class="view" id="v-riesgo" hidden>
+    <div class="panel">
+      <h2>Calculadora de posición</h2>
+      <div class="form">
+        <label>Balance de la cuenta<input id="r-balance" class="num" type="number" step="0.01" inputmode="decimal"></label>
+        <label>Moneda de la cuenta<select id="r-ccy"><option>USD</option><option>EUR</option><option>GBP</option></select></label>
+        <label>Riesgo por operación (%)<input id="r-risk" class="num" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>Activo<select id="r-pair"></select></label>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="seg" role="group" aria-label="Dirección" id="r-dir">
+          <button type="button" data-v="buy" aria-pressed="true">Compra</button>
+          <button type="button" data-v="sell" aria-pressed="false">Venta</button>
+        </div>
+      </div>
+      <div class="form" style="margin-top:12px">
+        <label>Entrada<input id="r-entry" class="num" type="number" step="any" inputmode="decimal" placeholder="0.97381"></label>
+        <label>Stop loss<input id="r-sl" class="num" type="number" step="any" inputmode="decimal" placeholder="0.97250"></label>
+        <label>Take profit<input id="r-tp" class="num" type="number" step="any" inputmode="decimal" placeholder="0.97600"></label>
+      </div>
+      <div class="result" id="r-out"></div>
+      <div class="verdict" id="r-verdict">Rellena entrada, stop y objetivo para ver el cálculo.</div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="r-tojournal" type="button">Pasar al diario</button></div>
+    </div>
+    <p class="foot">Lotes estándar de 100.000 unidades (oro: 100 onzas; cripto: unidades de la moneda). El valor del pip se convierte a la moneda de tu cuenta con el tipo de cambio diario del BCE, así que puede diferir unos céntimos del de tu broker. Comprueba siempre el tamaño final en MetaTrader.</p>
+  </section>
+
+  <!-- DIARIO -->
+  <section class="view" id="v-diario" hidden>
+    <div class="result" id="stats" style="margin-top:0"></div>
+    <div class="panel"><h2><span>Curva de capital</span><span id="eq-label" class="num" style="text-transform:none;letter-spacing:0"></span></h2><canvas id="equity"></canvas></div>
+    <div class="panel">
+      <h2>Nueva operación</h2>
+      <form id="j-form" class="form" autocomplete="off">
+        <label>Fecha<input id="j-date" type="datetime-local" required></label>
+        <label>Activo<select id="j-pair"></select></label>
+        <label>Dirección<select id="j-dir"><option value="buy">Compra</option><option value="sell">Venta</option></select></label>
+        <label>Lotes<input id="j-lots" class="num" type="number" step="0.01" inputmode="decimal"></label>
+        <label>Entrada<input id="j-entry" class="num" type="number" step="any" inputmode="decimal"></label>
+        <label>Stop<input id="j-sl" class="num" type="number" step="any" inputmode="decimal"></label>
+        <label>Objetivo<input id="j-tp" class="num" type="number" step="any" inputmode="decimal"></label>
+        <label>Salida<input id="j-exit" class="num" type="number" step="any" inputmode="decimal"></label>
+        <label>Resultado (de MetaTrader)<input id="j-pl" class="num" type="number" step="0.01" inputmode="decimal" required placeholder="-25.40"></label>
+        <label>Riesgo planeado<input id="j-risk" class="num" type="number" step="0.01" inputmode="decimal" placeholder="100"></label>
+        <label>Estrategia<input id="j-setup" list="setups" placeholder="Retroceso a resistencia"></label>
+        <label>Estado de ánimo<select id="j-mood"><option value="">—</option><option>Tranquilo</option><option>Con prisa</option><option>FOMO</option><option>Venganza</option><option>Cansado</option></select></label>
+        <label style="grid-column:1/-1">Por qué entré y qué aprendí<textarea id="j-note"></textarea></label>
+        <div class="row" style="grid-column:1/-1"><button class="btn primary" type="submit">Guardar operación</button><span class="muted" style="font-size:12px">Copia el resultado exacto de tu historial de MetaTrader.</span></div>
+      </form>
+      <datalist id="setups"></datalist>
+    </div>
+    <div class="panel">
+      <h2><span>Operaciones</span><span class="row" style="text-transform:none;letter-spacing:0;font-weight:400">
+        <button class="btn" id="j-copy" type="button">Copiar para Claude</button>
+        <button class="btn" id="j-export" type="button">Exportar</button>
+        <label class="btn" style="display:inline-block;color:var(--fg);font-size:14px">Importar<input id="j-import" type="file" accept="application/json" hidden></label>
+      </span></h2>
+      <div class="table-wrap"><table id="j-table"></table></div>
+    </div>
+    <div class="panel">
+      <h2>Ajustes de la cuenta</h2>
+      <div class="form">
+        <label>Balance inicial<input id="s-initial" class="num" type="number" step="0.01" inputmode="decimal"></label>
+        <label>Moneda<select id="s-ccy"><option>USD</option><option>EUR</option><option>GBP</option></select></label>
+      </div>
+      <p class="foot">Los datos se guardan solo en este navegador. Usa Exportar e Importar para pasarlos del móvil al ordenador o para hacer copia.</p>
+    </div>
+  </section>
+
+  <p class="foot" style="margin-top:24px">Herramienta de aprendizaje para cuenta demo. No es asesoramiento financiero. Los gráficos, el calendario y los indicadores son de <a href="https://es.tradingview.com/" target="_blank" rel="noopener">TradingView</a>; los precios de cripto, de Binance en tiempo real.</p>
+</main>
+
+<nav class="bottom" role="tablist" aria-label="Secciones">
+  <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
+  <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
+  <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+  <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
+</nav>
+
+<script>
+"use strict";
+// ---------- Activos ----------
+// tv: símbolo de TradingView; pip: tamaño del pip; unit: unidades por lote; quote: moneda de cotización
+const ASSETS = [
+  {id:"AUDCAD", tv:"OANDA:AUDCAD", pip:0.0001, unit:100000, quote:"CAD"},
+  {id:"NZDCAD", tv:"OANDA:NZDCAD", pip:0.0001, unit:100000, quote:"CAD"},
+  {id:"EURUSD", tv:"FX:EURUSD",    pip:0.0001, unit:100000, quote:"USD"},
+  {id:"GBPUSD", tv:"FX:GBPUSD",    pip:0.0001, unit:100000, quote:"USD"},
+  {id:"USDJPY", tv:"FX:USDJPY",    pip:0.01,   unit:100000, quote:"JPY"},
+  {id:"AUDUSD", tv:"FX:AUDUSD",    pip:0.0001, unit:100000, quote:"USD"},
+  {id:"NZDUSD", tv:"FX:NZDUSD",    pip:0.0001, unit:100000, quote:"USD"},
+  {id:"USDCAD", tv:"FX:USDCAD",    pip:0.0001, unit:100000, quote:"CAD"},
+  {id:"USDCHF", tv:"FX:USDCHF",    pip:0.0001, unit:100000, quote:"CHF"},
+  {id:"EURGBP", tv:"FX:EURGBP",    pip:0.0001, unit:100000, quote:"GBP"},
+  {id:"EURJPY", tv:"FX:EURJPY",    pip:0.01,   unit:100000, quote:"JPY"},
+  {id:"GBPJPY", tv:"FX:GBPJPY",    pip:0.01,   unit:100000, quote:"JPY"},
+  {id:"XAUUSD", tv:"OANDA:XAUUSD", pip:0.1,    unit:100,    quote:"USD", label:"Oro (XAUUSD)"},
+  {id:"BTCUSDT", tv:"BINANCE:BTCUSDT", pip:1,  unit:1, quote:"USD", crypto:true, label:"Bitcoin (BTCUSDT)"},
+  {id:"ETHUSDT", tv:"BINANCE:ETHUSDT", pip:0.1, unit:1, quote:"USD", crypto:true, label:"Ethereum (ETHUSDT)"},
+  {id:"SOLUSDT", tv:"BINANCE:SOLUSDT", pip:0.01, unit:1, quote:"USD", crypto:true, label:"Solana (SOLUSDT)"},
+];
+const byId = Object.fromEntries(ASSETS.map(a=>[a.id,a]));
+const $ = s => document.querySelector(s);
+const fmt = (n,d=2) => Number.isFinite(n) ? n.toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d}) : "—";
+const store = {
+  get(k,def){ try{ const v=localStorage.getItem("mesa:"+k); return v==null?def:JSON.parse(v);}catch{ return def; } },
+  set(k,v){ try{ localStorage.setItem("mesa:"+k, JSON.stringify(v)); }catch{} }
+};
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.append(t); setTimeout(()=>t.remove(),2200); }
+
+// ---------- Pestañas ----------
+const loaded = new Set();
+function show(view){
+  document.querySelectorAll(".view").forEach(v=>v.hidden = v.id !== "v-"+view);
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected", t.dataset.view===view));
+  store.set("view", view);
+  if(!loaded.has(view)){ loaded.add(view); (LOADERS[view]||(()=>{}))(); }
+  if(view==="diario") renderJournal();
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.view)));
+
+// ---------- Reloj y sesiones ----------
+const SESSIONS = [
+  {name:"Sídney", tz:"Australia/Sydney"}, {name:"Tokio", tz:"Asia/Tokyo"},
+  {name:"Londres", tz:"Europe/London"}, {name:"Nueva York", tz:"America/New_York"},
+];
+function localHour(tz, d){ const p = new Intl.DateTimeFormat("en-GB",{timeZone:tz,hour:"numeric",minute:"numeric",hourCycle:"h23",weekday:"short"}).formatToParts(d);
+  const g = t => p.find(x=>x.type===t).value; return {h:+g("hour")+(+g("minute"))/60, wd:g("weekday")}; }
+function tick(){
+  const d = new Date();
+  $("#clock").textContent = d.toLocaleTimeString("es-ES",{timeZone:"Europe/Madrid"}) + " Madrid";
+  $("#sessions").innerHTML = SESSIONS.map(s=>{ const {h,wd}=localHour(s.tz,d); const on = h>=8 && h<17 && wd!=="Sat" && wd!=="Sun";
+    return `<span class="sess ${on?"on":""}" title="${on?"Abierta":"Cerrada"}"><b></b>${s.name}</span>`; }).join("");
+}
+tick(); setInterval(tick,1000);
+
+// ---------- TradingView ----------
+function tvWidget(el, file, config){
+  el.innerHTML = "";
+  const box = document.createElement("div"); box.className="tradingview-widget-container"; box.style.height="100%";
+  const inner = document.createElement("div"); inner.className="tradingview-widget-container__widget"; inner.style.height="100%";
+  const s = document.createElement("script"); s.src = "https://s3.tradingview.com/external-embedding/"+file; s.async = true;
+  s.textContent = JSON.stringify(Object.assign({colorTheme:"dark", theme:"dark", isTransparent:true, locale:"es"}, config));
+  box.append(inner, s); el.append(box);
+}
+const tvSym = id => byId[id].tv;
+function loadMercado(){
+  tvWidget($("#tape"),"embed-widget-ticker-tape.js",{symbols:["AUDCAD","NZDCAD","EURUSD","GBPUSD","USDJPY","XAUUSD","BTCUSDT","ETHUSDT"].map(id=>({proName:tvSym(id), title:id})).concat([{proName:"TVC:DXY",title:"DXY"}]), displayMode:"adaptive", showSymbolLogo:true, isTransparent:false});
+  tvWidget($("#fxmatrix"),"embed-widget-forex-cross-rates.js",{width:"100%",height:"100%",currencies:["EUR","USD","JPY","GBP","CHF","AUD","CAD","NZD"]});
+  tvWidget($("#calendar"),"embed-widget-events.js",{width:"100%",height:"100%",importanceFilter:"0,1",countryFilter:"us,eu,gb,jp,au,nz,ca,ch,cn"});
+  startCrypto();
+}
+function loadGrafico(){
+  const sel = $("#symbol");
+  sel.innerHTML = ASSETS.map(a=>`<option value="${a.id}">${a.label||a.id}</option>`).join("");
+  sel.value = store.get("symbol","AUDCAD");
+  const draw = () => {
+    store.set("symbol", sel.value);
+    tvWidget($("#chart"),"embed-widget-advanced-chart.js",{autosize:true, symbol:tvSym(sel.value), interval:"15", timezone:"Europe/Madrid", theme:"dark", style:"1", allow_symbol_change:true, hide_side_toolbar:false, studies:["STD;RSI","STD;EMA"], support_host:"https://www.tradingview.com"});
+    tvWidget($("#ta"),"embed-widget-technical-analysis.js",{interval:"1h", width:"100%", height:"100%", symbol:tvSym(sel.value), showIntervalTabs:true, displayMode:"single"});
+  };
+  sel.addEventListener("change", draw); draw();
+}
+
+// ---------- Cripto en vivo (Binance) ----------
+const CRYPTO = ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"];
+const live = {};
+function startCrypto(){
+  $("#tickers").innerHTML = CRYPTO.map(s=>`<div class="tk" id="tk-${s}"><span class="sym">${s.replace("USDT","")}/USDT</span><span class="px num">—</span><span class="ch num muted">—</span></div>`).join("");
+  fetch("https://data-api.binance.vision/api/v3/ticker/24hr?symbols="+encodeURIComponent(JSON.stringify(CRYPTO)))
+    .then(r=>r.json()).then(a=>a.forEach(t=>paint(t.symbol,+t.lastPrice,+t.openPrice))).catch(()=>{});
+  let ws, retry = 1000;
+  const connect = () => {
+    ws = new WebSocket("wss://data-stream.binance.vision/stream?streams="+CRYPTO.map(s=>s.toLowerCase()+"@miniTicker").join("/"));
+    ws.onopen = () => { retry=1000; $("#wsdot").classList.add("live"); $("#wsstate").textContent="En vivo"; };
+    ws.onmessage = e => { const d = JSON.parse(e.data).data; paint(d.s, +d.c, +d.o); };
+    ws.onclose = () => { $("#wsdot").classList.remove("live"); $("#wsstate").textContent="Reconectando…"; setTimeout(connect, retry); retry=Math.min(retry*2,30000); };
+  };
+  connect();
+}
+function paint(sym, price, open){
+  const el = document.getElementById("tk-"+sym); if(!el) return;
+  const prev = live[sym]; live[sym] = price;
+  const px = el.querySelector(".px"), ch = el.querySelector(".ch");
+  const dec = price < 10 ? 4 : 2;
+  px.textContent = fmt(price, dec);
+  const pct = (price/open-1)*100;
+  ch.textContent = (pct>=0?"+":"") + fmt(pct,2) + "% 24h";
+  ch.className = "ch num " + (pct>=0?"up":"down");
+  if(prev && prev!==price){ el.classList.remove("flash-up","flash-down"); void el.offsetWidth; el.classList.add(price>prev?"flash-up":"flash-down"); }
+}
+
+// ---------- Tipos de cambio (BCE, para el valor del pip) ----------
+const fxCache = {};
+async function rate(from, to){
+  if(from===to) return 1;
+  const k = from+to; if(fxCache[k]) return fxCache[k];
+  try{ const r = await fetch(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`).then(r=>r.json()); return fxCache[k] = r.rates[to]; }
+  catch{ return null; }
+}
+
+// ---------- Calculadora de riesgo ----------
+const settings = Object.assign({initial:10000, ccy:"USD"}, store.get("settings",{}));
+let dir = "buy";
+function loadRiesgo(){
+  $("#r-pair").innerHTML = ASSETS.map(a=>`<option value="${a.id}">${a.label||a.id}</option>`).join("");
+  $("#r-pair").value = store.get("rpair","AUDCAD");
+  $("#r-balance").value = (settings.initial + trades().reduce((s,t)=>s+t.pl,0)).toFixed(2);
+  $("#r-ccy").value = settings.ccy;
+  ["#r-balance","#r-ccy","#r-risk","#r-pair","#r-entry","#r-sl","#r-tp"].forEach(s=>$(s).addEventListener("input", calc));
+  $("#r-dir").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return; dir=b.dataset.v;
+    $("#r-dir").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); calc(); });
+  $("#r-tojournal").addEventListener("click", ()=>{
+    $("#j-pair").value = $("#r-pair").value; $("#j-dir").value = dir;
+    $("#j-entry").value = $("#r-entry").value; $("#j-sl").value = $("#r-sl").value; $("#j-tp").value = $("#r-tp").value;
+    if(lastCalc){ $("#j-lots").value = lastCalc.lots; $("#j-risk").value = lastCalc.riskMoney.toFixed(2); }
+    show("diario"); $("#j-pl").focus();
+  });
+  calc();
+}
+let lastCalc = null;
+async function calc(){
+  const a = byId[$("#r-pair").value]; store.set("rpair", a.id);
+  const bal = +$("#r-balance").value, pct = +$("#r-risk").value, ccy = $("#r-ccy").value;
+  const e = +$("#r-entry").value, sl = +$("#r-sl").value, tp = +$("#r-tp").value;
+  const out = $("#r-out"), v = $("#r-verdict");
+  lastCalc = null;
+  if(!e || !sl){ out.innerHTML=""; v.className="verdict"; v.textContent="Rellena entrada y stop (y el objetivo, si lo tienes) para ver el cálculo."; return; }
+  const wrongSide = dir==="buy" ? sl>=e : sl<=e;
+  if(wrongSide){ out.innerHTML=""; v.className="verdict bad"; v.textContent = dir==="buy" ? "En una compra el stop va por debajo de la entrada." : "En una venta el stop va por encima de la entrada."; return; }
+  const riskMoney = bal * pct/100;
+  const stopDist = Math.abs(e-sl), stopPips = stopDist / a.pip;
+  const conv = await rate(a.quote, ccy);
+  if(conv==null){ v.className="verdict warn"; v.textContent="No se ha podido obtener el tipo de cambio. Revisa la conexión."; return; }
+  const valuePerLot = stopDist * a.unit * conv;           // pérdida por lote si salta el stop
+  let lots = riskMoney / valuePerLot;
+  lots = a.crypto ? Math.floor(lots*10000)/10000 : Math.floor(lots*100)/100;
+  const realRisk = lots * valuePerLot;
+  const pipValue = a.pip * a.unit * conv;
+  const rr = tp ? Math.abs(tp-e)/stopDist : NaN;
+  const reward = tp ? lots * Math.abs(tp-e) * a.unit * conv : NaN;
+  const tpWrong = tp && (dir==="buy" ? tp<=e : tp>=e);
+  lastCalc = {lots, riskMoney: realRisk};
+  out.innerHTML = [
+    ["big", a.crypto ? "Cantidad" : "Lotes", a.crypto ? fmt(lots,4)+" "+a.id.replace("USDT","") : fmt(lots,2)],
+    ["", "Riesgo real", fmt(realRisk)+" "+ccy],
+    ["", "Distancia al stop", fmt(stopPips, a.pip<0.01?1:2)+(a.crypto?" $":" pips")],
+    ["", "Valor del pip (1 lote)", a.crypto ? "—" : fmt(pipValue)+" "+ccy],
+    ["", "Beneficio si toca TP", tp && !tpWrong ? fmt(reward)+" "+ccy : "—"],
+    ["", "Riesgo / beneficio", tp && !tpWrong ? "1 : "+fmt(rr,2) : "—"],
+  ].map(([c,k,val])=>`<div class="kpi ${c}"><div class="k">${k}</div><div class="v">${val}</div></div>`).join("");
+  let cls="ok", msg="Riesgo controlado y objetivo razonable.";
+  if(lots<=0){ cls="bad"; msg="Con este stop y este riesgo no llega ni al lote mínimo (0,01). Acerca el stop solo si la estructura lo permite, o no operes."; }
+  else if(tpWrong){ cls="bad"; msg="El objetivo está en el lado equivocado de la entrada."; }
+  else if(pct>2){ cls="bad"; msg=`Arriesgar un ${fmt(pct,1)} % por operación es mucho: con 5 pérdidas seguidas perderías más del ${fmt(pct*5,0)} %. Lo habitual es entre 0,5 y 1 %.`; }
+  else if(!tp){ cls="warn"; msg="Sin objetivo no puedes saber si la operación compensa. Define un take profit."; }
+  else if(rr<1.5){ cls="warn"; msg=`La relación es 1:${fmt(rr,2)}. Por debajo de 1:1,5 necesitas acertar mucho para ganar a largo plazo; mejor esperar otra entrada.`; }
+  else if(!a.crypto && stopPips<5){ cls="warn"; msg="Stop muy ajustado: el ruido normal del mercado (y el spread) pueden sacarte aunque tengas razón."; }
+  v.className = "verdict "+cls; v.textContent = msg;
+}
+
+// ---------- Diario ----------
+function trades(){ return store.get("trades", []); }
+function saveTrades(t){ store.set("trades", t); }
+function loadDiario(){
+  $("#j-pair").innerHTML = ASSETS.map(a=>`<option value="${a.id}">${a.id}</option>`).join("");
+  const now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  $("#j-date").value = now.toISOString().slice(0,16);
+  $("#s-initial").value = settings.initial; $("#s-ccy").value = settings.ccy;
+  $("#s-initial").addEventListener("change", e=>{ settings.initial = +e.target.value||0; store.set("settings",settings); renderJournal(); });
+  $("#s-ccy").addEventListener("change", e=>{ settings.ccy = e.target.value; store.set("settings",settings); renderJournal(); });
+  $("#j-form").addEventListener("submit", e=>{
+    e.preventDefault();
+    const n = id => { const v=$(id).value; return v===""?null:+v; };
+    const t = {id:Date.now().toString(36), date:$("#j-date").value, pair:$("#j-pair").value, dir:$("#j-dir").value,
+      lots:n("#j-lots"), entry:n("#j-entry"), sl:n("#j-sl"), tp:n("#j-tp"), exit:n("#j-exit"),
+      pl:n("#j-pl")||0, risk:n("#j-risk"), setup:$("#j-setup").value.trim(), mood:$("#j-mood").value, note:$("#j-note").value.trim()};
+    const all = trades(); all.push(t); all.sort((a,b)=>a.date.localeCompare(b.date)); saveTrades(all);
+    ["#j-lots","#j-entry","#j-sl","#j-tp","#j-exit","#j-pl","#j-risk","#j-note"].forEach(s=>$(s).value="");
+    toast("Operación guardada"); renderJournal();
+  });
+  $("#j-table").addEventListener("click", e=>{
+    const b = e.target.closest("[data-del]"); if(!b) return;
+    if(b.dataset.armed){ saveTrades(trades().filter(t=>t.id!==b.dataset.del)); renderJournal(); toast("Operación borrada"); }
+    else { b.dataset.armed="1"; b.textContent="¿Seguro?"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.armed; b.textContent="Borrar"; } },3000); }
+  });
+  $("#j-export").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify({settings, trades:trades()},null,2)],{type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "diario-trading-"+new Date().toISOString().slice(0,10)+".json"; a.click();
+  });
+  $("#j-import").addEventListener("change", async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{ const d = JSON.parse(await f.text()); if(!Array.isArray(d.trades)) throw 0;
+      saveTrades(d.trades); if(d.settings){ Object.assign(settings,d.settings); store.set("settings",settings); $("#s-initial").value=settings.initial; $("#s-ccy").value=settings.ccy; }
+      renderJournal(); toast(`${d.trades.length} operaciones importadas`);
+    }catch{ toast("Ese archivo no es una exportación del diario"); }
+    e.target.value="";
+  });
+  $("#j-copy").addEventListener("click", ()=>{
+    const txt = summaryText();
+    navigator.clipboard.writeText(txt).then(()=>toast("Copiado. Pégalo en el chat con Claude"),()=>{ const ta=document.createElement("textarea"); ta.value=txt; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast("Copiado"); });
+  });
+}
+function computeStats(list){
+  const wins = list.filter(t=>t.pl>0), losses = list.filter(t=>t.pl<0);
+  const gw = wins.reduce((s,t)=>s+t.pl,0), gl = -losses.reduce((s,t)=>s+t.pl,0);
+  let eq = settings.initial, peak = eq, maxDD = 0, streak=0, worstStreak=0;
+  const curve = [eq];
+  for(const t of list){ eq += t.pl; curve.push(eq); peak = Math.max(peak,eq); maxDD = Math.max(maxDD, (peak-eq)/peak*100);
+    streak = t.pl<0 ? streak+1 : 0; worstStreak = Math.max(worstStreak, streak); }
+  const rs = list.filter(t=>t.risk>0).map(t=>t.pl/t.risk);
+  return { n:list.length, winRate: list.length? wins.length/list.length*100 : NaN, net: gw-gl, balance: eq,
+    avgWin: wins.length? gw/wins.length : NaN, avgLoss: losses.length? gl/losses.length : NaN,
+    pf: gl>0 ? gw/gl : (gw>0? Infinity : NaN), expectancy: list.length? (gw-gl)/list.length : NaN,
+    avgR: rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : NaN, maxDD, worstStreak, curve };
+}
+function renderJournal(){
+  if(!loaded.has("diario")) return;
+  const list = trades(), s = computeStats(list), c = settings.ccy;
+  const ret = (s.balance/settings.initial-1)*100;
+  $("#stats").innerHTML = [
+    ["big","Balance", fmt(s.balance)+" "+c, ""],
+    ["","Rentabilidad", (ret>=0?"+":"")+fmt(ret)+" %", ret>=0?"up":"down"],
+    ["","Operaciones", s.n, ""],
+    ["","% de acierto", Number.isFinite(s.winRate)? fmt(s.winRate,1)+" %" : "—", ""],
+    ["","Factor de beneficio", s.pf===Infinity? "∞" : Number.isFinite(s.pf)? fmt(s.pf) : "—", s.pf>=1?"up":Number.isFinite(s.pf)?"down":""],
+    ["","Esperanza por operación", Number.isFinite(s.expectancy)? fmt(s.expectancy)+" "+c : "—", s.expectancy>=0?"up":"down"],
+    ["","Ganancia / pérdida media", Number.isFinite(s.avgWin)||Number.isFinite(s.avgLoss) ? fmt(s.avgWin)+" / "+fmt(s.avgLoss) : "—", ""],
+    ["","R medio", Number.isFinite(s.avgR)? fmt(s.avgR)+" R" : "—", s.avgR>=0?"up":"down"],
+    ["","Máx. caída", fmt(s.maxDD,1)+" %", s.maxDD>10?"down":""],
+    ["","Peor racha", s.worstStreak+" pérdidas", ""],
+  ].map(([cl,k,v,col])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}">${v}</div></div>`).join("");
+  $("#eq-label").textContent = fmt(settings.initial)+" → "+fmt(s.balance)+" "+c;
+  drawEquity(s.curve);
+  $("#setups").innerHTML = [...new Set(list.map(t=>t.setup).filter(Boolean))].map(x=>`<option value="${x.replace(/"/g,"&quot;")}">`).join("");
+  const tbl = $("#j-table");
+  if(!list.length){ tbl.innerHTML = `<tr><td class="empty">Todavía no hay operaciones. Apunta la primera de tu demo con el formulario de arriba.</td></tr>`; return; }
+  const esc = x => String(x??"").replace(/[&<>]/g, ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
+  tbl.innerHTML = `<tr><th>Fecha</th><th>Activo</th><th>Dir.</th><th>Lotes</th><th>Entrada</th><th>Stop</th><th>Salida</th><th>Resultado</th><th>R</th><th>Estrategia</th><th>Notas</th><th></th></tr>` +
+    list.slice().reverse().map(t=>`<tr>
+      <td class="num">${esc(t.date.replace("T"," "))}</td><td>${esc(t.pair)}</td>
+      <td><span class="pill ${t.dir}">${t.dir==="buy"?"Compra":"Venta"}</span></td>
+      <td class="num">${t.lots??"—"}</td><td class="num">${t.entry??"—"}</td><td class="num">${t.sl??"—"}</td><td class="num">${t.exit??"—"}</td>
+      <td class="num ${t.pl>=0?"up":"down"}">${(t.pl>=0?"+":"")+fmt(t.pl)}</td>
+      <td class="num">${t.risk>0? fmt(t.pl/t.risk)+"R" : "—"}</td>
+      <td>${esc(t.setup)||"—"}${t.mood?` <span class="pill">${esc(t.mood)}</span>`:""}</td>
+      <td class="note">${esc(t.note)}</td>
+      <td><button class="btn danger" data-del="${t.id}" type="button">Borrar</button></td></tr>`).join("");
+}
+function drawEquity(curve){
+  const cv = $("#equity"), dpr = window.devicePixelRatio||1, w = cv.clientWidth, h = cv.clientHeight;
+  if(!w) return;
+  cv.width = w*dpr; cv.height = h*dpr; const g = cv.getContext("2d"); g.scale(dpr,dpr); g.clearRect(0,0,w,h);
+  const css = getComputedStyle(document.documentElement), col = n => css.getPropertyValue(n).trim();
+  const pad = {l:56,r:12,t:12,b:22};
+  let min = Math.min(...curve, settings.initial), max = Math.max(...curve, settings.initial);
+  const padV = Math.max((max-min)*0.1, settings.initial*0.01); min -= padV; max += padV;
+  const span = max-min;
+  const x = i => pad.l + (curve.length<2 ? 0 : i/(curve.length-1))*(w-pad.l-pad.r);
+  const y = v => pad.t + (1-(v-min)/span)*(h-pad.t-pad.b);
+  g.font = "11px "+col("--mono"); g.fillStyle = col("--muted"); g.strokeStyle = col("--line"); g.lineWidth = 1;
+  for(let i=0;i<=3;i++){ const v = min + span*i/3, yy = y(v); g.beginPath(); g.moveTo(pad.l,yy); g.lineTo(w-pad.r,yy); g.stroke(); g.fillText(fmt(v,0), 4, yy+4); }
+  g.setLineDash([4,4]); g.strokeStyle = col("--muted"); g.beginPath(); g.moveTo(pad.l,y(settings.initial)); g.lineTo(w-pad.r,y(settings.initial)); g.stroke(); g.setLineDash([]);
+  if(curve.length<2){ g.fillText("La curva aparecerá cuando apuntes operaciones", pad.l+8, h/2); return; }
+  const last = curve[curve.length-1], c = last>=settings.initial ? col("--up") : col("--down");
+  const grad = g.createLinearGradient(0,pad.t,0,h-pad.b); grad.addColorStop(0, c+"55"); grad.addColorStop(1, c+"00");
+  g.beginPath(); curve.forEach((v,i)=> i? g.lineTo(x(i),y(v)) : g.moveTo(x(i),y(v)));
+  g.lineTo(x(curve.length-1), h-pad.b); g.lineTo(x(0), h-pad.b); g.closePath(); g.fillStyle = grad; g.fill();
+  g.beginPath(); curve.forEach((v,i)=> i? g.lineTo(x(i),y(v)) : g.moveTo(x(i),y(v))); g.strokeStyle = c; g.lineWidth = 2; g.stroke();
+  g.beginPath(); g.arc(x(curve.length-1), y(last), 4, 0, Math.PI*2); g.fillStyle = c; g.fill();
+}
+window.addEventListener("resize", ()=>{ if(!$("#v-diario").hidden) renderJournal(); });
+function summaryText(){
+  const list = trades(), s = computeStats(list), c = settings.ccy;
+  const lines = [
+    `Mi diario de trading (cuenta demo, ${c}). Balance inicial ${fmt(settings.initial)}, actual ${fmt(s.balance)}.`,
+    `${s.n} operaciones · acierto ${fmt(s.winRate,1)} % · factor de beneficio ${Number.isFinite(s.pf)?fmt(s.pf):"—"} · esperanza ${fmt(s.expectancy)} ${c}/op · máx. caída ${fmt(s.maxDD,1)} % · peor racha ${s.worstStreak}.`,
+    "", "Últimas operaciones (fecha | activo | dirección | lotes | entrada | stop | objetivo | salida | resultado | riesgo | estrategia | ánimo | nota):"
+  ];
+  list.slice(-30).forEach(t=>lines.push([t.date.replace("T"," "),t.pair,t.dir==="buy"?"compra":"venta",t.lots,t.entry,t.sl,t.tp,t.exit,t.pl,t.risk,t.setup,t.mood,t.note].map(v=>v??"").join(" | ")));
+  lines.push("", "Analiza mis errores y patrones, y dime qué mejorar.");
+  return lines.join("\n");
+}
+
+const LOADERS = {mercado:loadMercado, grafico:loadGrafico, riesgo:loadRiesgo, diario:()=>{ loadDiario(); }};
+show(store.get("view","mercado"));
+</script>
+</body>
+</html>
