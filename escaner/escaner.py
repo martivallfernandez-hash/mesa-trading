@@ -219,10 +219,12 @@ def analizar(activo):
         puntos += bonus_ses
         senal = {"direccion": direccion, "entrada": entrada, "stop": stop, "objetivo": obj, "rr": round(rr, 2),
                  "puntos": min(100, puntos), "motivo": f"vela de 15 min rechazando {', '.join(zona['notas']) or 'zona con ' + str(zona['toques']) + ' toques'}",
-                 "vela": cerradas[-1][0].astimezone(MADRID).strftime("%H:%M")}
+                 "vela": cerradas[-1][0].astimezone(MADRID).strftime("%H:%M"), "ts": int(cerradas[-1][0].timestamp())}
         break
 
+    corta = lambda v, n: [[int(x[0].timestamp()), x[1], x[2], x[3], x[4]] for x in v[-n:]]
     return {"activo": activo, "hora": ahora.astimezone(MADRID).strftime("%d/%m %H:%M"), "precio": precio,
+            "decimales": dec(activo, precio), "velas15": corta(v15, 192), "velas1h": corta(v1h, 120),
             "dia": {"apertura": hoy[0][1] if hoy else precio, "maximo": maxd, "minimo": mind},
             "tendencia_1h": t1h, "tendencia_15m": t15, "rsi_15m": round(r, 1), "atr_15m": a15, "atr_1h": a1h,
             "ema20_1h": e20h, "ema50_1h": e50h, "zonas": zs, "soporte": sop, "resistencia": res,
@@ -346,7 +348,8 @@ def escanea(todas=False, como_json=False, enviar=False):
         log(f"escaneo hecho: {len(nuevas)} señales nuevas" + (f", errores: {'; '.join(errores)}" if errores else ""))
         return
     if como_json:
-        print(json.dumps({"senales": nuevas, "errores": errores}, default=str, ensure_ascii=False))
+        sin_velas = [{k: v for k, v in a.items() if not k.startswith("velas")} for a in nuevas]
+        print(json.dumps({"senales": sin_velas, "errores": errores}, default=str, ensure_ascii=False))
         return
     if not nuevas:
         print("SIN SEÑALES NUEVAS")
@@ -356,12 +359,27 @@ def escanea(todas=False, como_json=False, enviar=False):
         print("Error de datos:", e)
 
 
+def exporta(ruta):
+    """Guarda velas y análisis de toda la lista en un JSON para el gráfico de la Mesa."""
+    salida = {"generado": int(dt.datetime.now(dt.timezone.utc).timestamp()), "activos": {}, "errores": []}
+    for activo in LISTA:
+        try:
+            salida["activos"][activo] = analizar(activo)
+        except Exception as e:
+            salida["errores"].append(f"{activo}: {e}")
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(salida, f, default=str, ensure_ascii=False, separators=(",", ":"))
+    log(f"exportado {ruta}: {len(salida['activos'])} activos")
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
     if sys.stdout is not None:
         sys.stdout.reconfigure(encoding="utf-8")
     if args[:1] == ["analiza"] and len(args) > 1:
         print(texto(analizar(args[1].upper().replace("/", ""))))
+    elif args[:1] == ["exporta"] and len(args) > 1:
+        exporta(args[1])
     elif args[:1] == ["escanea"]:
         if sys.stdout is None:  # pythonw no tiene consola
             sys.stdout = sys.stderr = open(os.devnull, "w")

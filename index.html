@@ -143,6 +143,22 @@ canvas{width:100%;height:220px;display:block}
   <!-- GRÁFICO -->
   <section class="view" id="v-grafico" hidden>
     <div class="panel">
+      <h2><span>Dónde comprar y dónde vender</span>
+        <span class="row" style="text-transform:none;letter-spacing:0;font-weight:400">
+          <select id="sig-asset" aria-label="Activo para señalar" style="width:auto"></select>
+          <span class="seg" role="group" aria-label="Temporalidad" id="sig-tf"><button type="button" data-v="15" aria-pressed="true">15 min</button><button type="button" data-v="60" aria-pressed="false">1 h</button></span>
+        </span>
+      </h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn primary" id="sig-go" type="button">Señalar compra y venta</button>
+        <span class="seg" role="group" aria-label="Qué mostrar" id="sig-mode"><button type="button" data-v="ambas" aria-pressed="true">Ambas</button><button type="button" data-v="compra" aria-pressed="false">Compra</button><button type="button" data-v="venta" aria-pressed="false">Venta</button></span>
+        <span class="muted" id="sig-age" style="font-size:12px"></span>
+      </div>
+      <div id="sig-chart" style="height:min(60vh,520px);min-height:340px"></div>
+      <div id="sig-info" class="result" style="margin-top:12px"></div>
+      <div id="sig-note" class="verdict" style="margin-top:10px">Elige un activo y pulsa «Señalar compra y venta».</div>
+    </div>
+    <div class="panel">
       <h2><span>Gráfico</span>
         <select id="symbol" aria-label="Activo" style="width:auto;text-transform:none;letter-spacing:0;font-weight:400"></select>
       </h2>
@@ -247,6 +263,7 @@ canvas{width:100%;height:220px;display:block}
   <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 "use strict";
 // ---------- Activos ----------
@@ -330,6 +347,90 @@ function loadGrafico(){
     tvWidget($("#ta"),"embed-widget-technical-analysis.js",{interval:"1h", width:"100%", height:"100%", symbol:tvSym(sel.value), showIntervalTabs:true, displayMode:"single"});
   };
   sel.addEventListener("change", draw); draw();
+  loadSenales();
+}
+
+// ---------- Gráfico señalado (datos del escáner) ----------
+const DATA_URL = location.hostname==="localhost" ? "datos-prueba.json" : "https://raw.githubusercontent.com/martivallfernandez-hash/mesa-trading/datos/datos.json";
+const SIG_ASSETS = ["AUDCAD","NZDCAD","EURUSD","GBPUSD","USDJPY","AUDUSD","XAUUSD","BTCUSDT","ETHUSDT"];
+let datos = null, lw = null, lwSeries = null, lwLines = [], sigTf = "15", sigMode = "ambas", marcado = false;
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function madrid(t, withDay){ return new Date(t*1000).toLocaleString("es-ES",{timeZone:"Europe/Madrid", ...(withDay?{day:"2-digit",month:"2-digit"}:{}), hour:"2-digit", minute:"2-digit"}); }
+function loadSenales(){
+  const sel = $("#sig-asset");
+  sel.innerHTML = SIG_ASSETS.map(id=>`<option value="${id}">${byId[id].label||id}</option>`).join("");
+  sel.value = SIG_ASSETS.includes(store.get("symbol","AUDCAD")) ? store.get("symbol","AUDCAD") : "AUDCAD";
+  if(!window.LightweightCharts){ $("#sig-note").textContent = "No se ha podido cargar el gráfico. Revisa la conexión y recarga."; return; }
+  lw = LightweightCharts.createChart($("#sig-chart"), {
+    autoSize:true, crosshair:{mode:0},
+    layout:{background:{type:"solid", color:cssVar("--panel")}, textColor:cssVar("--muted"), fontFamily:cssVar("--mono")},
+    grid:{vertLines:{color:cssVar("--line")}, horzLines:{color:cssVar("--line")}},
+    rightPriceScale:{borderColor:cssVar("--line")},
+    timeScale:{borderColor:cssVar("--line"), timeVisible:true, secondsVisible:false, tickMarkFormatter:t=>madrid(t)},
+    localization:{locale:"es-ES", timeFormatter:t=>madrid(t,true)}
+  });
+  lwSeries = lw.addCandlestickSeries({upColor:cssVar("--up"), downColor:cssVar("--down"), borderVisible:false, wickUpColor:cssVar("--up"), wickDownColor:cssVar("--down")});
+  const seg = (id, set) => $(id).addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
+    $(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); set(b.dataset.v); pintar(marcado); });
+  seg("#sig-tf", v=>sigTf=v); seg("#sig-mode", v=>sigMode=v);
+  sel.addEventListener("change", ()=>{ marcado=false; pintar(false); });
+  $("#sig-go").addEventListener("click", async ()=>{ await cargarDatos(true); marcado = true; pintar(true); });
+  cargarDatos(false).then(()=>pintar(false));
+}
+async function cargarDatos(force){
+  if(datos && !force) return datos;
+  $("#sig-age").textContent = "Cargando datos…";
+  try{ datos = await fetch(DATA_URL+"?t="+Date.now(), {cache:"no-store"}).then(r=>{ if(!r.ok) throw 0; return r.json(); }); }
+  catch{ $("#sig-age").textContent = ""; $("#sig-note").className="verdict bad"; $("#sig-note").textContent = "No hay datos del escáner todavía. Se publican cada 5 minutos de lunes a viernes de 8:00 a 22:00."; return null; }
+  const min = Math.round((Date.now()/1000 - datos.generado)/60);
+  $("#sig-age").textContent = `Datos de hace ${min} min${min>20?" (el escáner solo funciona L-V de 8 a 22)":""}`;
+  return datos;
+}
+function pintar(marcar){
+  if(!lw || !datos) return;
+  const a = datos.activos[$("#sig-asset").value];
+  const note = $("#sig-note"), info = $("#sig-info");
+  if(!a){ note.className="verdict warn"; note.textContent="No hay datos de este activo en la última actualización."; return; }
+  const dec = a.decimales, f = x => (+x).toFixed(dec);
+  const velas = (sigTf==="15" ? a.velas15 : a.velas1h).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
+  lwSeries.setData(velas);
+  lwSeries.applyOptions({priceFormat:{type:"price", precision:dec, minMove:Math.pow(10,-dec)}});
+  lwLines.forEach(l=>lwSeries.removePriceLine(l)); lwLines = []; lwSeries.setMarkers([]);
+  lw.timeScale().setVisibleLogicalRange({from: Math.max(0, velas.length - (sigTf==="15"?96:72)), to: velas.length + 4});
+  if(!marcar){ info.innerHTML=""; note.className="verdict"; note.textContent="Pulsa «Señalar compra y venta» para marcar las zonas y la mejor entrada."; return; }
+  const line = (price, color, title, style=0, width=1, label=true) => lwLines.push(lwSeries.createPriceLine({price:+price, color, lineWidth:width, lineStyle:style, axisLabelVisible:label, title}));
+  const up = cssVar("--up"), down = cssVar("--down"), muted = cssVar("--muted");
+  // Zonas: las más cercanas al precio, en tono suave
+  const zonas = (a.zonas||[]).slice().sort((x,y)=>Math.abs((x.desde+x.hasta)/2-a.precio)-Math.abs((y.desde+y.hasta)/2-a.precio)).slice(0,6);
+  zonas.forEach(z=>{ const col = (z.hasta < a.precio ? up : down) + "66";
+    line(z.hasta, col, "", 2, 1, false); if(z.desde!==z.hasta) line(z.desde, col, "", 2, 1, false); });
+  // Planes
+  const planes = (a.planes||[]).filter(p=>sigMode==="ambas" || p.direccion===sigMode);
+  planes.forEach(p=>{ const c = p.direccion==="compra" ? up : down, tag = p.direccion==="compra" ? "COMPRA" : "VENTA";
+    line(p.entrada, c, `${tag}${p.a_favor?" ★":""}`, 0, p.a_favor?3:2);
+    line(p.stop, down, `Stop ${p.direccion}`, 1, 1);
+    line(p.objetivo, up, `Objetivo ${p.direccion}`, 1, 1); });
+  // Señal activa: flecha en la vela que la dio
+  const s = a.senal;
+  if(s && (sigMode==="ambas" || s.direccion===sigMode)){
+    const tf = sigTf==="15" ? 900 : 3600, t = s.ts ? s.ts - (s.ts % tf) : velas[velas.length-2].time;
+    lwSeries.setMarkers([{time:t, position: s.direccion==="compra"?"belowBar":"aboveBar", color: s.direccion==="compra"?up:down, shape: s.direccion==="compra"?"arrowUp":"arrowDown", text:`${s.direccion.toUpperCase()} ${s.puntos}/100`}]);
+    line(s.entrada, s.direccion==="compra"?up:down, `SEÑAL ${s.direccion}`, 0, 3);
+  }
+  // Panel de explicación
+  const best = (a.planes||[]).find(p=>p.a_favor) || (a.planes||[])[0];
+  info.innerHTML = [
+    ["", "Precio", f(a.precio)],
+    ["", "Tendencia 1 h", a.tendencia_1h, a.tendencia_1h==="alcista"?"up":a.tendencia_1h==="bajista"?"down":""],
+    ["", "Tendencia 15 min", a.tendencia_15m, a.tendencia_15m==="alcista"?"up":a.tendencia_15m==="bajista"?"down":""],
+    ...planes.map(p=>[p.a_favor?"big":"", `${p.direccion==="compra"?"Compra":"Venta"}${p.a_favor?" ★ a favor":""}`, `${f(p.entrada)} · R:B 1:${(+p.rr).toFixed(1)}`, p.direccion==="compra"?"up":"down"]),
+  ].map(([cl,k,v,col=""])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}" style="font-size:16px">${v}</div></div>`).join("");
+  let cls="warn", msg;
+  if(s){ cls="ok"; msg = `Señal activa (${s.puntos}/100): ${s.direccion} en ${f(s.entrada)}, stop ${f(s.stop)}, objetivo ${f(s.objetivo)}, R:B 1:${(+s.rr).toFixed(1)}. ${s.motivo}. Compruébalo en tu MetaTrader antes de entrar.`; }
+  else if(best){ const q = best.direccion==="compra" ? "baja" : "sube";
+    msg = `Sin señal ahora. La mejor opción${best.a_favor?" (a favor de la tendencia de 1 h)":""} es ${best.direccion==="compra"?"comprar":"vender"} si el precio ${q} a ${f(best.entrada)} y una vela de 15 min rechaza esa zona. Stop ${f(best.stop)}, objetivo ${f(best.objetivo)}, R:B 1:${(+best.rr).toFixed(1)}.${+best.rr<1.5?" El R:B es bajo: mejor esperar.":""} Pon una alerta en ese precio.`; }
+  else msg = "No hay zonas claras cerca del precio: mejor esperar.";
+  note.className = "verdict "+cls; note.textContent = msg;
 }
 
 // ---------- Cripto en vivo (Binance) ----------
