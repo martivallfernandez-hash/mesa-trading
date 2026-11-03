@@ -142,12 +142,12 @@ def plan(direccion, zona, precio, opuestas, atr15, objetivo_dia):
     margen = 0.3 * atr15
     if direccion == "compra":
         entrada = zona["hasta"]
-        stop = zona["desde"] - margen
+        stop = min(zona["desde"] - margen, entrada - atr15)  # nunca a menos de 1 ATR: el ruido te sacaría
         cands = [z["desde"] for z in opuestas if z["desde"] > entrada + (entrada - stop) * 1.2]
         objetivo = min(cands) if cands else objetivo_dia
     else:
         entrada = zona["desde"]
-        stop = zona["hasta"] + margen
+        stop = max(zona["hasta"] + margen, entrada + atr15)
         cands = [z["hasta"] for z in opuestas if z["hasta"] < entrada - (stop - entrada) * 1.2]
         objetivo = max(cands) if cands else objetivo_dia
     riesgo = abs(entrada - stop)
@@ -201,10 +201,10 @@ def analizar(activo):
         candidatos.append(("venta", {"desde": e20, "hasta": h, "fuerza": 1, "notas": ["media de 20 en M15"]}, (h - max(o, c)) / cuerpo))
     for direccion, zona, mecha in candidatos:
         if direccion == "compra":
-            entrada, stop = c, min(l, zona["desde"]) - 0.3 * a15
+            entrada, stop = c, min(min(l, zona["desde"]) - 0.3 * a15, c - a15)
             obj = min([z["desde"] for z in resist if z["desde"] > entrada], default=entrada + 2 * (entrada - stop))
         else:
-            entrada, stop = c, max(h, zona["hasta"]) + 0.3 * a15
+            entrada, stop = c, max(max(h, zona["hasta"]) + 0.3 * a15, c + a15)
             obj = max([z["hasta"] for z in soportes if z["hasta"] < entrada], default=entrada - 2 * (stop - entrada))
         rr = abs(obj - entrada) / abs(entrada - stop)
         if rr < 1.5:  # objetivo demasiado cerca: se amplía a 2R solo si no hay zona en medio
