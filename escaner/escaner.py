@@ -21,7 +21,9 @@ import urllib.request
 LISTA = ["AUDCAD", "NZDCAD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD", "BTCUSDT", "ETHUSDT"]
 YAHOO = {"XAUUSD": "GC=F"}
 ESTADO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "senales_enviadas.json")
-UMBRAL = 70
+UMBRAL = 70        # señal fuerte
+UMBRAL_DEBIL = 55  # señal débil: se avisa, marcada como de poca relevancia
+DEBIL = "poca relevancia"
 UA = {"User-Agent": "Mozilla/5.0"}
 try:
     from zoneinfo import ZoneInfo
@@ -187,40 +189,49 @@ def analizar(activo):
     r = rsi([x[4] for x in cerradas])
     nombre_ses, bonus_ses = sesion(ahora)
     senal = None
-    toca = lambda z, x: z and z["desde"] - 0.25 * a15 <= x <= z["hasta"] + 0.25 * a15
-    candidatos = []
-    zona_baja = max([z for z in zs if z["desde"] <= l + 0.25 * a15 and z["hasta"] >= l - 0.25 * a15], key=lambda z: z["fuerza"], default=None)
-    zona_alta = max([z for z in zs if z["desde"] <= h + 0.25 * a15 and z["hasta"] >= h - 0.25 * a15], key=lambda z: z["fuerza"], default=None)
-    if zona_baja and c > o and (min(o, c) - l) >= cuerpo and t1h != "bajista":
-        candidatos.append(("compra", zona_baja, (min(o, c) - l) / cuerpo))
-    if zona_alta and c < o and (h - max(o, c)) >= cuerpo and t1h != "alcista":
-        candidatos.append(("venta", zona_alta, (h - max(o, c)) / cuerpo))
-    if not candidatos and t1h == "alcista" and abs(l - e20) <= 0.3 * a15 and c > o and c > e20:
-        candidatos.append(("compra", {"desde": l, "hasta": e20, "fuerza": 1, "notas": ["media de 20 en M15"]}, (min(o, c) - l) / cuerpo))
-    if not candidatos and t1h == "bajista" and abs(h - e20) <= 0.3 * a15 and c < o and c < e20:
-        candidatos.append(("venta", {"desde": e20, "hasta": h, "fuerza": 1, "notas": ["media de 20 en M15"]}, (h - max(o, c)) / cuerpo))
-    for direccion, zona, mecha in candidatos:
-        if direccion == "compra":
-            entrada, stop = c, min(min(l, zona["desde"]) - 0.3 * a15, c - a15)
-            obj = min([z["desde"] for z in resist if z["desde"] > entrada], default=entrada + 2 * (entrada - stop))
-        else:
-            entrada, stop = c, max(max(h, zona["hasta"]) + 0.3 * a15, c + a15)
-            obj = max([z["hasta"] for z in soportes if z["hasta"] < entrada], default=entrada - 2 * (stop - entrada))
-        rr = abs(obj - entrada) / abs(entrada - stop)
-        if rr < 1.5:  # objetivo demasiado cerca: se amplía a 2R solo si no hay zona en medio
-            continue
-        puntos = 50
-        puntos += 15 if (direccion == "compra" and t1h == "alcista") or (direccion == "venta" and t1h == "bajista") else 0
-        puntos += 10 if t15 == t1h and t1h != "lateral" else 0
-        puntos += 10 if zona["fuerza"] >= 3 else 5 if zona["fuerza"] == 2 else 0
-        puntos += 10 if rr >= 2 else 0
-        puntos += 5 if mecha >= 2 else 0
-        puntos += 5 if (direccion == "compra" and r < 40) or (direccion == "venta" and r > 60) else 0
-        puntos += bonus_ses
-        senal = {"direccion": direccion, "entrada": entrada, "stop": stop, "objetivo": obj, "rr": round(rr, 2),
-                 "puntos": min(100, puntos), "motivo": f"vela de 15 min rechazando {', '.join(zona['notas']) or 'zona con ' + str(zona['toques']) + ' toques'}",
-                 "vela": cerradas[-1][0].astimezone(MADRID).strftime("%H:%M"), "ts": int(cerradas[-1][0].timestamp())}
-        break
+    def buscar(tol, mecha_min, rr_min, base, permite_contra):
+        """Busca un rechazo de zona en la última vela de 15 min. Modo estricto o flexible."""
+        cand = []
+        zb = max([z for z in zs if z["desde"] <= l + tol * a15 and z["hasta"] >= l - tol * a15], key=lambda z: z["fuerza"], default=None)
+        za = max([z for z in zs if z["desde"] <= h + tol * a15 and z["hasta"] >= h - tol * a15], key=lambda z: z["fuerza"], default=None)
+        if zb and c > o and (min(o, c) - l) >= mecha_min * cuerpo and (permite_contra or t1h != "bajista"):
+            cand.append(("compra", zb, (min(o, c) - l) / cuerpo))
+        if za and c < o and (h - max(o, c)) >= mecha_min * cuerpo and (permite_contra or t1h != "alcista"):
+            cand.append(("venta", za, (h - max(o, c)) / cuerpo))
+        if not cand and t1h == "alcista" and abs(l - e20) <= (tol + 0.05) * a15 and c > o and c > e20:
+            cand.append(("compra", {"desde": l, "hasta": e20, "fuerza": 1, "toques": 1, "notas": ["media de 20 en M15"]}, (min(o, c) - l) / cuerpo))
+        if not cand and t1h == "bajista" and abs(h - e20) <= (tol + 0.05) * a15 and c < o and c < e20:
+            cand.append(("venta", {"desde": e20, "hasta": h, "fuerza": 1, "toques": 1, "notas": ["media de 20 en M15"]}, (h - max(o, c)) / cuerpo))
+        for direccion, zona, mecha in cand:
+            if direccion == "compra":
+                entrada, stop = c, min(min(l, zona["desde"]) - 0.3 * a15, c - a15)
+                obj = min([z["desde"] for z in resist if z["desde"] > entrada], default=entrada + 2 * (entrada - stop))
+            else:
+                entrada, stop = c, max(max(h, zona["hasta"]) + 0.3 * a15, c + a15)
+                obj = max([z["hasta"] for z in soportes if z["hasta"] < entrada], default=entrada - 2 * (stop - entrada))
+            rr = abs(obj - entrada) / abs(entrada - stop)
+            if rr < rr_min:
+                continue
+            a_favor = (direccion == "compra" and t1h == "alcista") or (direccion == "venta" and t1h == "bajista")
+            contra = (direccion == "compra" and t1h == "bajista") or (direccion == "venta" and t1h == "alcista")
+            puntos = base
+            puntos += 15 if a_favor else -10 if contra else 0
+            puntos += 10 if t15 == t1h and t1h != "lateral" else 0
+            puntos += 10 if zona["fuerza"] >= 3 else 5 if zona["fuerza"] == 2 else 0
+            puntos += 10 if rr >= 2 else 0
+            puntos += 5 if mecha >= 2 else 0
+            puntos += 5 if (direccion == "compra" and r < 40) or (direccion == "venta" and r > 60) else 0
+            puntos += bonus_ses
+            return {"direccion": direccion, "entrada": entrada, "stop": stop, "objetivo": obj, "rr": round(rr, 2),
+                    "puntos": max(0, min(100, puntos)), "motivo": f"vela de 15 min rechazando {', '.join(zona['notas']) or 'zona con ' + str(zona.get('toques', 1)) + ' toques'}"
+                    + ("" if base == 50 else " (patrón flexible: mecha o toque más débil)"),
+                    "vela": cerradas[-1][0].astimezone(MADRID).strftime("%H:%M"), "ts": int(cerradas[-1][0].timestamp())}
+        return None
+
+    # Primero el patrón estricto; si no hay, uno flexible con menos puntos (solo puede dar señales débiles)
+    senal = buscar(0.25, 1.0, 1.5, 50, False) or buscar(0.45, 0.5, 1.3, 40, True)
+    if senal and senal["motivo"].endswith("más débil)"):
+        senal["puntos"] = min(senal["puntos"], UMBRAL - 1)
 
     corta = lambda v, n: [[int(x[0].timestamp()), x[1], x[2], x[3], x[4]] for x in v[-n:]]
     return {"activo": activo, "hora": ahora.astimezone(MADRID).strftime("%d/%m %H:%M"), "precio": precio,
@@ -248,7 +259,8 @@ def texto(a):
                  f"entrada {d(p['entrada'])} · stop {d(p['stop'])} · objetivo {d(p['objetivo'])} · R:B 1:{p['rr']} · a {p['distancia_atr']} ATR del precio")
     s = a["senal"]
     if s:
-        L.append(f"SEÑAL ACTIVA ({s['puntos']}/100): {s['direccion']} en {d(s['entrada'])}, stop {d(s['stop'])}, objetivo {d(s['objetivo'])}, "
+        nivel = "" if s["puntos"] >= UMBRAL else f", {DEBIL}" if s["puntos"] >= UMBRAL_DEBIL else ", demasiado débil para avisar"
+        L.append(f"SEÑAL ACTIVA ({s['puntos']}/100{nivel}): {s['direccion']} en {d(s['entrada'])}, stop {d(s['stop'])}, objetivo {d(s['objetivo'])}, "
                  f"R:B 1:{s['rr']} — {s['motivo']} (vela de las {s['vela']})")
     else:
         L.append("Sin señal activa ahora mismo: esperar a que el precio llegue a una zona y la rechace.")
@@ -289,13 +301,15 @@ def avisar(a):
     """Manda la señal al móvil con ntfy (https://ntfy.sh)."""
     tema = tema_ntfy()
     s, d = a["senal"], (lambda x: f"{x:.{dec(a['activo'], a['precio'])}f}")
-    titulo = f"{a['activo']} · {s['direccion'].upper()} · {s['puntos']}/100"
-    cuerpo = (f"Entrada {d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n"
+    debil = s["puntos"] < UMBRAL
+    titulo = f"{a['activo']} · {s['direccion'].upper()} · {s['puntos']}/100" + (f" · {DEBIL}" if debil else "")
+    cuerpo = (("Señal débil: poca relevancia. Úsala para observar o practicar, no como entrada principal.\n" if debil else "") +
+              f"Entrada {d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n"
               f"{s['motivo'].capitalize()} (vela de las {s['vela']}). Tendencia 1 h: {a['tendencia_1h']}.\n"
               "Compruébalo en tu gráfico antes de entrar. Educativo, cuenta demo.")
     req = urllib.request.Request(f"https://ntfy.sh/{tema}", data=cuerpo.encode("utf-8"), headers={
         "Title": titulo.encode("utf-8"), "Tags": "chart_with_upwards_trend" if s["direccion"] == "compra" else "chart_with_downwards_trend",
-        "Priority": "high" if s["puntos"] >= 85 else "default", "Click": MESA, "User-Agent": "Mozilla/5.0"})
+        "Priority": "high" if s["puntos"] >= 85 else "low" if debil else "default", "Click": MESA, "User-Agent": "Mozilla/5.0"})
     urllib.request.urlopen(req, timeout=20).close()
 
 
@@ -323,13 +337,17 @@ def escanea(todas=False, como_json=False, enviar=False):
             errores.append(f"{activo}: {e}")
             continue
         s = a["senal"]
-        if not s or s["puntos"] < UMBRAL:
+        if not s or s["puntos"] < UMBRAL_DEBIL:
             continue
-        clave = f"{activo}-{s['direccion']}"
-        if not todas and ahora - enviadas.get(clave, 0) < 3 * 3600:
+        fuerte = s["puntos"] >= UMBRAL
+        # Una señal débil no se repite si ya se avisó cualquier cosa de ese activo y dirección;
+        # una fuerte solo se bloquea si ya se avisó otra fuerte (puede «mejorar» una débil).
+        clave = f"{activo}-{s['direccion']}-{'fuerte' if fuerte else 'debil'}"
+        bloquea = [clave] if fuerte else [clave, f"{activo}-{s['direccion']}-fuerte"]
+        if not todas and any(ahora - enviadas.get(k, 0) < 3 * 3600 for k in bloquea):
             continue
         prefijo = f"{activo} · {s['direccion'].upper()} ·"
-        if not todas and enviados_canal and any(t.startswith(prefijo) for t in enviados_canal):
+        if not todas and enviados_canal and any(t.startswith(prefijo) and (not fuerte or DEBIL not in t) for t in enviados_canal):
             continue
         enviadas[clave] = ahora
         nuevas.append(a)
