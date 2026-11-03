@@ -38,12 +38,12 @@ def get(url):
 def velas(activo, intervalo):
     """Devuelve [(datetime_utc, o, h, l, c)] de las últimas velas cerradas y la actual."""
     if activo.endswith("USDT"):
-        iv = {"15m": "15m", "1h": "1h"}[intervalo]
+        iv = {"5m": "5m", "15m": "15m", "30m": "30m", "1h": "1h"}[intervalo]
         k = get(f"https://data-api.binance.vision/api/v3/klines?symbol={activo}&interval={iv}&limit=300")
         return [(dt.datetime.fromtimestamp(x[0] / 1000, dt.timezone.utc), *map(float, x[1:5])) for x in k]
     sym = YAHOO.get(activo, activo + "=X")
-    rng = {"15m": "5d", "1h": "1mo"}[intervalo]
-    yi = {"15m": "15m", "1h": "60m"}[intervalo]
+    rng = {"5m": "5d", "15m": "5d", "30m": "1mo", "1h": "1mo"}[intervalo]
+    yi = {"5m": "5m", "15m": "15m", "30m": "30m", "1h": "60m"}[intervalo]
     d = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval={yi}&range={rng}")["chart"]["result"][0]
     q = d["indicators"]["quote"][0]
     out = []
@@ -364,7 +364,13 @@ def exporta(ruta):
     salida = {"generado": int(dt.datetime.now(dt.timezone.utc).timestamp()), "activos": {}, "errores": []}
     for activo in LISTA:
         try:
-            salida["activos"][activo] = analizar(activo)
+            a = analizar(activo)
+            for iv, clave, n in (("5m", "velas5", 192), ("30m", "velas30", 160)):
+                try:
+                    a[clave] = [[int(x[0].timestamp()), x[1], x[2], x[3], x[4]] for x in velas(activo, iv)[-n:]]
+                except Exception as e:
+                    salida["errores"].append(f"{activo} {iv}: {e}")
+            salida["activos"][activo] = a
         except Exception as e:
             salida["errores"].append(f"{activo}: {e}")
     with open(ruta, "w", encoding="utf-8") as f:

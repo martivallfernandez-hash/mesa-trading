@@ -146,7 +146,7 @@ canvas{width:100%;height:220px;display:block}
       <h2><span>Dónde comprar y dónde vender</span>
         <span class="row" style="text-transform:none;letter-spacing:0;font-weight:400">
           <select id="sig-asset" aria-label="Activo para señalar" style="width:auto"></select>
-          <span class="seg" role="group" aria-label="Temporalidad" id="sig-tf"><button type="button" data-v="15" aria-pressed="true">15 min</button><button type="button" data-v="60" aria-pressed="false">1 h</button></span>
+          <span class="seg" role="group" aria-label="Temporalidad" id="sig-tf"><button type="button" data-v="5" aria-pressed="false">5 min</button><button type="button" data-v="15" aria-pressed="true">15 min</button><button type="button" data-v="30" aria-pressed="false">30 min</button><button type="button" data-v="60" aria-pressed="false">1 h</button></span>
         </span>
       </h2>
       <div class="row" style="margin-bottom:10px">
@@ -392,11 +392,12 @@ function pintar(marcar){
   const note = $("#sig-note"), info = $("#sig-info");
   if(!a){ note.className="verdict warn"; note.textContent="No hay datos de este activo en la última actualización."; return; }
   const dec = a.decimales, f = x => (+x).toFixed(dec);
-  const velas = (sigTf==="15" ? a.velas15 : a.velas1h).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
+  const fuente = {"5":a.velas5, "15":a.velas15, "30":a.velas30, "60":a.velas1h}[sigTf] || a.velas15;
+  const velas = fuente.map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
   lwSeries.setData(velas);
   lwSeries.applyOptions({priceFormat:{type:"price", precision:dec, minMove:Math.pow(10,-dec)}});
   lwLines.forEach(l=>lwSeries.removePriceLine(l)); lwLines = []; lwSeries.setMarkers([]);
-  lw.timeScale().setVisibleLogicalRange({from: Math.max(0, velas.length - (sigTf==="15"?96:72)), to: velas.length + 4});
+  lw.timeScale().setVisibleLogicalRange({from: Math.max(0, velas.length - ({"5":120,"15":96,"30":96,"60":72}[sigTf])), to: velas.length + 4});
   if(!marcar){ info.innerHTML=""; note.className="verdict"; note.textContent="Pulsa «Señalar compra y venta» para marcar las zonas y la mejor entrada."; return; }
   const line = (price, color, title, style=0, width=1, label=true) => lwLines.push(lwSeries.createPriceLine({price:+price, color, lineWidth:width, lineStyle:style, axisLabelVisible:label, title}));
   const up = cssVar("--up"), down = cssVar("--down"), muted = cssVar("--muted");
@@ -413,7 +414,9 @@ function pintar(marcar){
   // Señal activa: flecha en la vela que la dio
   const s = a.senal;
   if(s && (sigMode==="ambas" || s.direccion===sigMode)){
-    const tf = sigTf==="15" ? 900 : 3600, t = s.ts ? s.ts - (s.ts % tf) : velas[velas.length-2].time;
+    const tf = +sigTf * 60;
+    let t = s.ts ? (tf >= 900 ? s.ts - (s.ts % tf) : s.ts + 600) : velas[velas.length-2].time;  // en 5 min, la última vela de 5 dentro de la de 15
+    if(!velas.some(v=>v.time===t)) t = velas[velas.length-2].time;
     lwSeries.setMarkers([{time:t, position: s.direccion==="compra"?"belowBar":"aboveBar", color: s.direccion==="compra"?up:down, shape: s.direccion==="compra"?"arrowUp":"arrowDown", text:`${s.direccion.toUpperCase()} ${s.puntos}/100`}]);
     line(s.entrada, s.direccion==="compra"?up:down, `SEÑAL ${s.direccion}`, 0, 3);
   }
