@@ -1,0 +1,31 @@
+name: Escáner de señales
+
+# Cada 5 minutos de lunes a viernes (hora UTC; el script solo avisa de 8:00 a 22:00 de Madrid).
+# GitHub puede retrasar unos minutos las ejecuciones programadas cuando hay mucha carga.
+on:
+  schedule:
+    - cron: "*/5 6-21 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: escaner
+  cancel-in-progress: false
+
+jobs:
+  escanear:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Escanear y avisar al móvil
+        env:
+          NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
+        run: |
+          python -I escaner/escaner.py escanea --avisar
+          tail -n 3 escaner/escaner.log || true
