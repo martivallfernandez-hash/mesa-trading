@@ -371,6 +371,13 @@ let lw=null, lwSeries=null, lwLines=[], sigTf=15, sigMode="ambas", marcado=false
 let st = null;          // estado del activo mostrado: velas por temporalidad, análisis, último precio
 let ws = null, wsLegs = [], lastLeg = {}, analTimer = null, datosEsc = null;
 
+async function cargarEscaner(){ // API de GitHub (sin caché); si falla o se agota el límite, la copia raw
+  if(location.hostname!=="localhost"){
+    try{ const r = await fetch("https://api.github.com/repos/martivallfernandez-hash/mesa-trading/contents/datos.json?ref=datos", {headers:{Accept:"application/vnd.github.raw"}, cache:"no-store"});
+      if(r.ok) return await r.json(); }catch{}
+  }
+  return fetch(DATA_URL+"?t="+Date.now(),{cache:"no-store"}).then(r=>r.json());
+}
 function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function madrid(t, withDay){ return new Date(t*1000).toLocaleString("es-ES",{timeZone:"Europe/Madrid", ...(withDay?{day:"2-digit",month:"2-digit"}:{}), hour:"2-digit", minute:"2-digit"}); }
 
@@ -392,7 +399,7 @@ function combinar(a, b){ // vela sintética A×B alineada por tiempo
 async function historia(id, tf){
   const v = VIVO[id];
   if(!v.legs){
-    if(!datosEsc) datosEsc = await fetch(DATA_URL+"?t="+Date.now(),{cache:"no-store"}).then(r=>r.json());
+    if(!datosEsc) datosEsc = await cargarEscaner();
     const a = datosEsc.activos[id]; if(!a) throw new Error("sin datos del escáner");
     const k = {5:"velas5",15:"velas15",30:"velas30",60:"velas1h"}[tf];
     return (a[k]||[]).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
