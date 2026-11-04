@@ -1,43 +1,37 @@
 name: Escáner de señales
 
-# Cada 5 minutos de lunes a viernes (hora UTC; el script solo avisa de 8:00 a 22:00 de Madrid).
-# GitHub puede retrasar unos minutos las ejecuciones programadas cuando hay mucha carga.
+# Cada ejecución vigila el mercado cada 5 minutos durante unas 5 h (L-V de 8:00 a 22:00, hora de Madrid)
+# y al terminar lanza la siguiente. La programación de abajo solo sirve para arrancar la cadena
+# por la mañana o recuperarla si se corta: si ya hay una vigilando, la nueva espera su turno.
 on:
   schedule:
-    - cron: "2-59/5 6-21 * * 1-5"
+    - cron: "4,34 6-20 * * 1-5"
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: escaner
   cancel-in-progress: false
 
 jobs:
-  escanear:
+  vigilar:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Escanear y avisar al móvil
+      - name: Vigilar el mercado cada 5 minutos
         env:
           NTFY_TEMA: ${{ secrets.NTFY_TEMA }}
-        run: python -I escaner/escaner.py escanea --avisar
-      - name: Exportar velas y análisis para el gráfico de la Mesa
-        run: python -I escaner/escaner.py exporta datos.json
-      - name: Publicar los datos en la rama "datos"
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir pub && mv datos.json pub/ && cd pub
-          git init -q -b datos
-          git add datos.json
-          git -c user.name="escaner" -c user.email="escaner@users.noreply.github.com" commit -q -m "Datos del escáner"
-          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" datos
-      - name: Registro
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -I escaner/vigilar.py
+      - name: Pedir el relevo
         if: always()
-        run: tail -n 5 escaner/escaner.log || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python -I escaner/vigilar.py relevo
