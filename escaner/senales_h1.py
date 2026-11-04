@@ -134,7 +134,12 @@ def avisar(s):
     lt = lotes(s)
     linea_lotes = (f"Lotes para arriesgar {CUENTA['riesgo_pct']:g}% de {CUENTA['balance']:,}".replace(",", ".") +
                    f": {lt['usd']:.2f} si tu cuenta es en USD · {lt['eur']:.2f} si es en EUR.\n") if lt else ""
-    cuerpo = (f"Entrada ~{d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n" + linea_lotes +
+    dist_stop, dist_obj = abs(s["entrada"] - s["stop"]), abs(s["objetivo"] - s["entrada"])
+    arriba, abajo = ("por encima", "por debajo") if s["direccion"] == "compra" else ("por debajo", "por encima")
+    fuente = "precios de tu MetaTrader" if s.get("fuente") == "mt5" else "datos de referencia, pueden diferir de tu broker"
+    cuerpo = (f"Entra al precio de tu MetaTrader y pon:\n"
+              f"• Stop {d(dist_stop)} {abajo} de tu entrada\n• Objetivo {d(dist_obj)} {arriba} de tu entrada (R:B 1:{s['rr']})\n"
+              f"Niveles orientativos ({fuente}): entrada ~{d(s['entrada'])}, stop {d(s['stop'])}, objetivo {d(s['objetivo'])}.\n" + linea_lotes +
               f"Estrategia validada en 2 años de datos. En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media por operación ({h['n']} operaciones).\n"
               f"Si no toca stop ni objetivo, cerrar en {s['velas_max']} h. Compruébalo en tu gráfico. Educativo, cuenta demo.")
     # Publicación en JSON: así el título conserva acentos y símbolos (en una cabecera HTTP se estropean)
