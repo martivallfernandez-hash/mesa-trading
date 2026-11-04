@@ -420,6 +420,18 @@ function combinar(a, b){ // vela sintética A×B alineada por tiempo
     out.push({time:x.time, open:o, close:c, high:Math.max(o,c,x.high*y.close,x.close*y.high), low:Math.min(o,c,x.low*y.close,x.close*y.low)}); }
   return out;
 }
+let calib = null;   // diferencia broker - Kraken medida por el puente de MetaTrader del PC
+async function cargarCalibracion(){
+  if(calib) return calib;
+  try{ const r = await fetch("https://api.github.com/repos/martivallfernandez-hash/mesa-trading/contents/calibracion.json?ref=calibracion", {headers:{Accept:"application/vnd.github.raw"}, cache:"no-store"});
+    calib = r.ok ? await r.json() : {mercados:{}}; }catch{ calib = {mercados:{}}; }
+  return calib;
+}
+function ajuste(id){
+  const c = calib && calib.mercados && calib.mercados[id];
+  if(!c || c.n < 3 || c.rango_kraken > 5 || Date.now()/1000 - c.actualizado > 72*3600) return null;
+  return c;
+}
 async function historia(id, tf){
   const v = VIVO[id];
   if(!v.legs){
@@ -428,8 +440,11 @@ async function historia(id, tf){
     const k = {5:"velas5",15:"velas15",30:"velas30",60:"velas1h"}[tf];
     return (a[k]||[]).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
   }
-  const series = await Promise.all(v.legs.map(([p])=>krakenOHLC(p, tf)));
-  return limpiar(series.length===1 ? series[0] : combinar(series[0], series[1]));
+  const [series] = await Promise.all([Promise.all(v.legs.map(([p])=>krakenOHLC(p, tf))), cargarCalibracion()]);
+  const velas = limpiar(series.length===1 ? series[0] : combinar(series[0], series[1]));
+  const a = ajuste(id);
+  if(a) velas.forEach(c=>{ c.open+=a.kraken; c.high+=a.kraken; c.low+=a.kraken; c.close+=a.kraken; });
+  return velas;
 }
 function limpiar(v){ // quita picos de operaciones sueltas: mechas mucho mayores que lo normal
   if(v.length<20) return v;
@@ -586,7 +601,9 @@ function pintarEstado(){
   if(!st) return;
   const vivo = !!VIVO[st.id].legs, p = st.v15[st.v15.length-1].close, dec = DEC[st.id];
   const enZona = marcado && st.anal && st.anal.planes.find(pl=>Math.abs(p-pl.entrada) <= 0.25*st.anal.atr);
+  const aj = ajuste(st.id);
   $("#sig-age").innerHTML = (vivo ? `<span class="dot ${ws&&ws.readyState===1?"live":""}"></span> En vivo · ` : `Datos del escáner (cada 5 min) · `) +
+    (aj ? `<span title="Calibrado con tu MetaTrader hace ${Math.round((Date.now()/1000-aj.actualizado)/3600)} h">ajustado a tu broker ±${Math.max(aj.rango_kraken,0.5).toFixed(1)} · </span>` : "") +
     `<span class="num">${p.toFixed(dec)}</span>` + (enZona ? ` · <b class="${enZona.direccion==="compra"?"up":"down"}">el precio está en la zona de ${enZona.direccion}</b>` : "");
 }
 
@@ -602,7 +619,8 @@ function conectar(id){
   ws.onmessage = e=>{ const m = JSON.parse(e.data); if(m.channel!=="ticker" || !m.data) return;
     m.data.forEach(d=>{ lastLeg[d.symbol] = (+d.bid + +d.ask)/2 || +d.last; });
     if(wsLegs.some(s=>!lastLeg[s])) return;
-    tickPrecio(wsLegs.reduce((acc,s)=>acc*lastLeg[s],1));
+    const a = ajuste(id);
+    tickPrecio(wsLegs.reduce((acc,s)=>acc*lastLeg[s],1) + (a ? a.kraken : 0));
   };
   ws.onclose = ()=>{ pintarEstado(); setTimeout(()=>{ if(st && st.id===id) conectar(id); }, 3000); };
   // Recalcula el análisis cada minuto por si ha cerrado una vela de 15 min

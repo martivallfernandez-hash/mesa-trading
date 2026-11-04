@@ -117,6 +117,73 @@ def avisar(x):
                                                   headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}), timeout=20).close()
 
 
+# ---------- Autocalibración: diferencia entre tu broker y las fuentes de la nube ----------
+KRAKEN = {"XAUUSD": "PAXGUSD", "XAUEUR": "PAXGEUR"}
+CALIB_LOCAL = os.path.join(os.path.expanduser("~"), ".claude", "trading", "calibracion_precio.json")
+
+
+def kraken_mid(par):
+    d = escaner.get(f"https://api.kraken.com/0/public/Ticker?pair={par}")["result"]
+    t = next(iter(d.values()))
+    return (float(t["a"][0]) + float(t["b"][0])) / 2
+
+
+def calibrar():
+    """Mide broker - Yahoo (avisos de la nube) y broker - Kraken (gráfico de la Mesa) y guarda un historial."""
+    try:
+        with open(CALIB_LOCAL, encoding="utf-8") as f:
+            hist = json.load(f)
+    except (OSError, ValueError):
+        hist = {"mercados": {}, "publicado": 0}
+    ahora = int(time.time())
+    for m in MERCADOS:
+        tick = mt5.symbol_info_tick(m)
+        if not tick or not tick.bid:
+            continue
+        h0 = hist["mercados"].setdefault(m, {"medidas": []})
+        quieto = h0.get("ultimo_tick") == tick.time_msc   # mismo tick que hace 5 min: mercado parado (pausa o cierre)
+        h0["ultimo_tick"] = tick.time_msc
+        if quieto or "ultimo_tick_visto" not in h0:
+            h0["ultimo_tick_visto"] = True
+            continue                                       # solo se mide con el precio moviéndose
+        broker = (tick.bid + tick.ask) / 2
+        try:
+            yahoo = H.velas_1h(m)[-1][4]
+            kraken = kraken_mid(KRAKEN[m])
+        except Exception as e:
+            log(f"calibración {m}: sin fuente ({e})"); continue
+        h = hist["mercados"].setdefault(m, {"medidas": []})
+        h["medidas"] = (h["medidas"] + [[ahora, round(broker - yahoo, 3), round(broker - kraken, 3)]])[-60:]
+        ult = [x for x in h["medidas"] if ahora - x[0] < 6 * 3600] or h["medidas"][-1:]
+        med = lambda i: sorted(x[i] for x in ult)[len(ult) // 2]
+        dispersion = lambda i: round(max(x[i] for x in ult) - min(x[i] for x in ult), 2)
+        h.update({"actualizado": ahora, "broker": round(broker, 3), "yahoo": round(med(1), 3), "kraken": round(med(2), 3),
+                  "rango_yahoo": dispersion(1), "rango_kraken": dispersion(2), "n": len(ult)})
+    with open(CALIB_LOCAL, "w", encoding="utf-8") as f:
+        json.dump(hist, f)
+    # Publicar en la rama «calibracion» cada 30 min (la leen la nube y la Mesa)
+    if ahora - hist.get("publicado", 0) >= 1800 and hist["mercados"]:
+        publicar_calibracion({"generado": ahora, "mercados": {m: {k: v for k, v in h.items() if k not in ("medidas", "ultimo_tick", "ultimo_tick_visto")}
+                                                             for m, h in hist["mercados"].items() if h.get("n")}})
+        hist["publicado"] = ahora
+        with open(CALIB_LOCAL, "w", encoding="utf-8") as f:
+            json.dump(hist, f)
+
+
+def publicar_calibracion(datos):
+    import subprocess, tempfile
+    with tempfile.TemporaryDirectory() as d:
+        with open(os.path.join(d, "calibracion.json"), "w", encoding="utf-8") as f:
+            json.dump(datos, f, ensure_ascii=False)
+        git = lambda *a: subprocess.run(["git", "-C", d, *a], check=True, capture_output=True,
+                                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        git("init", "-q", "-b", "calibracion")
+        git("add", "calibracion.json")
+        git("-c", "user.name=puente-mt5", "-c", "user.email=puente@users.noreply.github.com", "commit", "-q", "-m", "Calibración de precios")
+        git("push", "-q", "-f", "https://github.com/martivallfernandez-hash/mesa-trading.git", "calibracion")
+    log("calibración publicada: " + ", ".join(f"{m} {v['yahoo']:+.2f}/{v['kraken']:+.2f}" for m, v in datos["mercados"].items()))
+
+
 def pasada(prueba=False):
     if not mt5.initialize(path=TERMINAL, timeout=20000):
         log(f"MetaTrader no responde: {mt5.last_error()}")
@@ -127,6 +194,10 @@ def pasada(prueba=False):
         if not cuenta:
             log("MetaTrader abierto pero sin sesión iniciada"); print("Sin sesión iniciada"); return
         cfg = H.config()
+        try:
+            calibrar()
+        except Exception as e:
+            log(f"error de calibración: {e}")
         for m in MERCADOS:
             x = analizar(m, cfg)
             if prueba:

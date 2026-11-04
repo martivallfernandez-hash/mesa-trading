@@ -127,6 +127,24 @@ def analizar(m, cfg=None):
             "historico": est["prueba"], "historico_todo": est["todo"]}
 
 
+def calibracion_broker(m):
+    """Diferencia broker - Yahoo medida por el puente de MetaTrader del PC (rama «calibracion»).
+    Solo se usa si es reciente (< 3 días), con 3+ medidas y poca variación."""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(
+                "https://api.github.com/repos/martivallfernandez-hash/mesa-trading/contents/calibracion.json?ref=calibracion",
+                headers={"Accept": "application/vnd.github.raw", "User-Agent": "escaner-mesa"}), timeout=20) as r:
+            c = json.load(r)["mercados"].get(m)
+    except Exception:
+        return None
+    if not c:
+        return None
+    horas = (dt.datetime.now(UTC).timestamp() - c["actualizado"]) / 3600
+    if horas > 72 or c.get("n", 0) < 3 or c.get("rango_yahoo", 99) > 5:
+        return None
+    return dict(c, horas=horas)
+
+
 def avisar(s):
     d = lambda x: f"{x:.{s['decimales']}f}"
     h = s["historico"]
@@ -136,10 +154,17 @@ def avisar(s):
                    f": {lt['usd']:.2f} si tu cuenta es en USD · {lt['eur']:.2f} si es en EUR.\n") if lt else ""
     dist_stop, dist_obj = abs(s["entrada"] - s["stop"]), abs(s["objetivo"] - s["entrada"])
     arriba, abajo = ("por encima", "por debajo") if s["direccion"] == "compra" else ("por debajo", "por encima")
-    fuente = "precios de tu MetaTrader" if s.get("fuente") == "mt5" else "datos de referencia, pueden diferir de tu broker"
+    cal = calibracion_broker(s["activo"])
+    if cal:
+        off = cal["yahoo"]
+        fuente = f"ajustados a tu broker con la calibración de hace {cal['horas']:.0f} h, margen ±{max(cal['rango_yahoo'], 0.5):.1f}"
+        niveles = (s["entrada"] + off, s["stop"] + off, s["objetivo"] + off)
+    else:
+        fuente = "datos de referencia, pueden diferir de tu broker"
+        niveles = (s["entrada"], s["stop"], s["objetivo"])
     cuerpo = (f"Entra al precio de tu MetaTrader y pon:\n"
               f"• Stop {d(dist_stop)} {abajo} de tu entrada\n• Objetivo {d(dist_obj)} {arriba} de tu entrada (R:B 1:{s['rr']})\n"
-              f"Niveles orientativos ({fuente}): entrada ~{d(s['entrada'])}, stop {d(s['stop'])}, objetivo {d(s['objetivo'])}.\n" + linea_lotes +
+              f"Niveles ({fuente}): entrada ~{d(niveles[0])}, stop {d(niveles[1])}, objetivo {d(niveles[2])}.\n" + linea_lotes +
               f"Estrategia validada en 2 años de datos. En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media por operación ({h['n']} operaciones).\n"
               f"Si no toca stop ni objetivo, cerrar en {s['velas_max']} h. Compruébalo en tu gráfico. Educativo, cuenta demo.")
     # Publicación en JSON: así el título conserva acentos y símbolos (en una cabecera HTTP se estropean)
