@@ -115,8 +115,18 @@ def publicar_datos(nuevas):
         git("push", "-q", "-f", f"https://x-access-token:{token}@github.com/{repo}.git", "datos")
 
 
+def esperar_apertura():
+    """Si arranca entre semana poco antes de las 8:00 (Madrid), espera a esa hora en vez de salir."""
+    m = ahora().astimezone(escaner.MADRID)
+    if m.weekday() < 5 and 5 <= m.hour < 8:
+        apertura = m.replace(hour=8, minute=0, second=30, microsecond=0)
+        print(f"Esperando a la apertura de las 8:00 ({(apertura - m).seconds // 60} min)", flush=True)
+        time.sleep((apertura - m).total_seconds())
+
+
 def vigilar():
     global senales
+    esperar_apertura()
     senales = cargar_senales()
     fin = time.time() + DURACION
     vueltas = 0
