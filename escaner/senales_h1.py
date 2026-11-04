@@ -137,9 +137,11 @@ def avisar(s):
     cuerpo = (f"Entrada ~{d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n" + linea_lotes +
               f"Estrategia validada en 2 años de datos. En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media por operación ({h['n']} operaciones).\n"
               f"Si no toca stop ni objetivo, cerrar en {s['velas_max']} h. Compruébalo en tu gráfico. Educativo, cuenta demo.")
-    req = urllib.request.Request(f"https://ntfy.sh/{escaner.tema_ntfy()}", data=cuerpo.encode("utf-8"), headers={
-        "Title": titulo.encode("utf-8"), "Tags": "chart_with_upwards_trend" if s["direccion"] == "compra" else "chart_with_downwards_trend",
-        "Priority": "high", "Click": escaner.MESA, "User-Agent": "Mozilla/5.0"})
+    # Publicación en JSON: así el título conserva acentos y símbolos (en una cabecera HTTP se estropean)
+    mensaje = {"topic": escaner.tema_ntfy(), "title": titulo, "message": cuerpo, "priority": 4, "click": escaner.MESA,
+               "tags": ["chart_with_upwards_trend" if s["direccion"] == "compra" else "chart_with_downwards_trend"]}
+    req = urllib.request.Request("https://ntfy.sh/", data=json.dumps(mensaje).encode("utf-8"),
+                                 headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
     urllib.request.urlopen(req, timeout=20).close()
 
 
