@@ -1089,9 +1089,52 @@
       "max_caida_R": 15.0,
       "por_mes": 13.3
      }
+    },
+    "ruptura_robusta": {
+     "nombre": "Ruptura de canal de 10 h (robusta)",
+     "entreno": {
+      "n": 138,
+      "acierto": 40.6,
+      "R_medio": 0.357,
+      "R_total": 49.2,
+      "factor": 1.63,
+      "max_caida_R": 8.2,
+      "por_mes": 7.3
+     },
+     "prueba": {
+      "n": 72,
+      "acierto": 36.1,
+      "R_medio": 0.195,
+      "R_total": 14.0,
+      "factor": 1.31,
+      "max_caida_R": 14.1,
+      "por_mes": 7.6
+     },
+     "todo": {
+      "n": 210,
+      "acierto": 39.0,
+      "R_medio": 0.301,
+      "R_total": 63.3,
+      "factor": 1.52,
+      "max_caida_R": 14.1,
+      "por_mes": 7.3
+     },
+     "config": {
+      "a_entrada": false,
+      "canal": 10,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 3.0
+     },
+     "solidez": {
+      "variantes": 960,
+      "ganan_prueba_pct": 96,
+      "vecinos_ganan_pct": 100
+     }
     }
    },
-   "elegida": "ruptura_canal"
+   "elegida": "ruptura_robusta"
   },
   "XAUEUR": {
    "dias": 875,
@@ -1245,9 +1288,52 @@
       "max_caida_R": 22.4,
       "por_mes": 13.6
      }
+    },
+    "ruptura_robusta": {
+     "nombre": "Ruptura de canal de 40 h (robusta)",
+     "entreno": {
+      "n": 123,
+      "acierto": 39.8,
+      "R_medio": 0.349,
+      "R_total": 43.0,
+      "factor": 1.57,
+      "max_caida_R": 7.2,
+      "por_mes": 6.5
+     },
+     "prueba": {
+      "n": 60,
+      "acierto": 41.7,
+      "R_medio": 0.384,
+      "R_total": 23.1,
+      "factor": 1.65,
+      "max_caida_R": 8.9,
+      "por_mes": 6.3
+     },
+     "todo": {
+      "n": 183,
+      "acierto": 40.4,
+      "R_medio": 0.361,
+      "R_total": 66.0,
+      "factor": 1.6,
+      "max_caida_R": 8.9,
+      "por_mes": 6.4
+     },
+     "config": {
+      "a_entrada": false,
+      "canal": 40,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "solidez": {
+      "variantes": 960,
+      "ganan_prueba_pct": 70,
+      "vecinos_ganan_pct": 100
+     }
     }
    },
-   "elegida": "ruptura_canal"
+   "elegida": "ruptura_robusta"
   },
   "BTCUSDT": {
    "dias": 730,
@@ -1563,7 +1649,7 @@
   }
  },
  "ranking": [
-  "XAUUSD",
-  "XAUEUR"
+  "XAUEUR",
+  "XAUUSD"
  ]
 }

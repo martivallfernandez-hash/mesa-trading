@@ -14,6 +14,33 @@ import escaner      # noqa: E402
 import laboratorio  # noqa: E402
 
 UTC = dt.timezone.utc
+# Cuenta demo del usuario: los lotes del aviso se calculan con esto
+CUENTA = {"balance": 10000, "riesgo_pct": 1.0}
+TAMANO_LOTE = {"XAUUSD": 100, "XAUEUR": 100}   # onzas por lote estándar en MetaTrader
+MONEDA = {"XAUUSD": "USD", "XAUEUR": "EUR"}
+
+
+def eurusd():
+    try:
+        d = escaner.get("https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1h&range=1d")["chart"]["result"][0]
+        return d["meta"]["regularMarketPrice"]
+    except Exception:
+        return 1.1
+
+
+def lotes(s):
+    """Lotes para arriesgar el % de la cuenta, en cuenta en USD y en cuenta en EUR (redondeado a la baja)."""
+    m = s["activo"]
+    if m not in TAMANO_LOTE:
+        return None
+    dist = abs(s["entrada"] - s["stop"])
+    perdida_lote = dist * TAMANO_LOTE[m]          # en la moneda del precio (USD o EUR)
+    tc = eurusd()
+    perdida_usd = perdida_lote * (tc if MONEDA[m] == "EUR" else 1)
+    perdida_eur = perdida_lote / (tc if MONEDA[m] == "USD" else 1)
+    riesgo = CUENTA["balance"] * CUENTA["riesgo_pct"] / 100
+    baja = lambda x: max(0.0, int(x * 100) / 100)
+    return {"usd": baja(riesgo / perdida_usd), "eur": baja(riesgo / perdida_eur), "riesgo": riesgo}
 DEC = {"EURUSD": 5, "GBPUSD": 5, "USDJPY": 3, "AUDUSD": 5, "AUDCAD": 5, "NZDCAD": 5, "XAUUSD": 2, "XAUEUR": 2, "BTCUSDT": 1, "ETHUSDT": 2}
 
 
@@ -44,6 +71,20 @@ def velas_1h(m):
     return yh(m + "=X")
 
 
+def ruptura_robusta(v, ind, i, c):
+    """Ruptura del canal de c['canal'] velas con filtro de la media de 200 (misma lógica que robustez.py)."""
+    a, cierre, e200 = ind["atr"][i], ind["c"][i], ind["e200"][i]
+    if a is None:
+        return None
+    n = c["canal"]
+    alto, bajo = max(x[2] for x in v[i - n:i]), min(x[3] for x in v[i - n:i])
+    if cierre > alto and (not c["filtro_200"] or cierre > e200):
+        return ("compra", c["stop_atr"] * a, c["objetivo_R"], c["horas_max"])
+    if cierre < bajo and (not c["filtro_200"] or cierre < e200):
+        return ("venta", c["stop_atr"] * a, c["objetivo_R"], c["horas_max"])
+    return None
+
+
 def analizar(m, cfg=None):
     """Devuelve la señal de la última vela de 1 h cerrada con la estrategia elegida, o None."""
     cfg = cfg or config()
@@ -51,7 +92,11 @@ def analizar(m, cfg=None):
     clave = info.get("elegida")
     if not clave:
         return None
-    nombre, fn = laboratorio.ESTRATEGIAS[clave]
+    est_info = info["estrategias"][clave]
+    if clave == "ruptura_robusta":
+        nombre, fn = est_info["nombre"], None
+    else:
+        nombre, fn = laboratorio.ESTRATEGIAS[clave]
     v = velas_1h(m)
     ahora = dt.datetime.now(UTC).timestamp()
     cerradas = [x for x in v if x[0] + 3600 <= ahora + 60]   # la vela en curso no cuenta
@@ -59,17 +104,24 @@ def analizar(m, cfg=None):
         return None
     ind = laboratorio.preparar(cerradas)
     i = len(cerradas) - 1
-    s = fn(cerradas, ind, i)
-    if not s:
-        return None
-    direccion, stop, mult, vmax = s
     precio = v[-1][4]                       # precio actual (entrada al momento)
+    if fn is None:
+        r = ruptura_robusta(cerradas, ind, i, est_info["config"])
+        if not r:
+            return None
+        direccion, dist, mult, vmax = r
+        stop = precio - dist if direccion == "compra" else precio + dist
+    else:
+        r = fn(cerradas, ind, i)
+        if not r:
+            return None
+        direccion, stop, mult, vmax = r
     compra = direccion == "compra"
     riesgo = (precio - stop) if compra else (stop - precio)
     if riesgo <= 0:
         return None
     objetivo = precio + (mult * riesgo if compra else -mult * riesgo)
-    est = info["estrategias"][clave]
+    est = est_info
     return {"activo": m, "estrategia": clave, "nombre": nombre, "direccion": direccion, "entrada": precio, "stop": stop,
             "objetivo": objetivo, "rr": mult, "velas_max": vmax, "ts": cerradas[-1][0], "decimales": DEC.get(m, 5),
             "historico": est["prueba"], "historico_todo": est["todo"]}
@@ -79,7 +131,10 @@ def avisar(s):
     d = lambda x: f"{x:.{s['decimales']}f}"
     h = s["historico"]
     titulo = f"{s['activo']} · {s['direccion'].upper()} · {s['nombre']}"
-    cuerpo = (f"Entrada ~{d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n"
+    lt = lotes(s)
+    linea_lotes = (f"Lotes para arriesgar {CUENTA['riesgo_pct']:g}% de {CUENTA['balance']:,}".replace(",", ".") +
+                   f": {lt['usd']:.2f} si tu cuenta es en USD · {lt['eur']:.2f} si es en EUR.\n") if lt else ""
+    cuerpo = (f"Entrada ~{d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n" + linea_lotes +
               f"Estrategia validada en 2 años de datos. En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media por operación ({h['n']} operaciones).\n"
               f"Si no toca stop ni objetivo, cerrar en {s['velas_max']} h. Compruébalo en tu gráfico. Educativo, cuenta demo.")
     req = urllib.request.Request(f"https://ntfy.sh/{escaner.tema_ntfy()}", data=cuerpo.encode("utf-8"), headers={

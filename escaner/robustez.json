@@ -1,0 +1,423 @@
+{
+ "generado": 1793820142,
+ "mercados": {
+  "XAUUSD": {
+   "elegida": {
+    "a_entrada": false,
+    "canal": 10,
+    "filtro_200": true,
+    "horas_max": 120,
+    "objetivo_R": 3.0,
+    "stop_atr": 3.0
+   },
+   "entreno": {
+    "n": 138,
+    "acierto": 40.6,
+    "R_medio": 0.357,
+    "R_total": 49.2,
+    "factor": 1.63,
+    "max_caida_R": 8.2,
+    "por_mes": 7.3
+   },
+   "prueba": {
+    "n": 72,
+    "acierto": 36.1,
+    "R_medio": 0.195,
+    "R_total": 14.0,
+    "factor": 1.31,
+    "max_caida_R": 14.1,
+    "por_mes": 7.6
+   },
+   "todo": {
+    "n": 210,
+    "acierto": 39.0,
+    "R_medio": 0.301,
+    "R_total": 63.3,
+    "factor": 1.52,
+    "max_caida_R": 14.1,
+    "por_mes": 7.3
+   },
+   "meseta_entreno": 0.301,
+   "vecinos_ganan_en_prueba": 100,
+   "variantes": 960,
+   "variantes_ganan_entreno": 82,
+   "variantes_ganan_prueba": 96,
+   "original": {
+    "entreno": {
+     "n": 259,
+     "acierto": 45.6,
+     "R_medio": 0.089,
+     "R_total": 23.1,
+     "factor": 1.16,
+     "max_caida_R": 10.9,
+     "por_mes": 13.6
+    },
+    "prueba": {
+     "n": 133,
+     "acierto": 45.1,
+     "R_medio": 0.121,
+     "R_total": 16.1,
+     "factor": 1.22,
+     "max_caida_R": 11.7,
+     "por_mes": 14.0
+    }
+   },
+   "top5": [
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 10,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 3.0
+     },
+     "meseta": 0.301,
+     "entreno": {
+      "n": 138,
+      "acierto": 40.6,
+      "R_medio": 0.357,
+      "R_total": 49.2,
+      "factor": 1.63,
+      "max_caida_R": 8.2,
+      "por_mes": 7.3
+     },
+     "prueba": {
+      "n": 72,
+      "acierto": 36.1,
+      "R_medio": 0.195,
+      "R_total": 14.0,
+      "factor": 1.31,
+      "max_caida_R": 14.1,
+      "por_mes": 7.6
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 15,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 3.0
+     },
+     "meseta": 0.294,
+     "entreno": {
+      "n": 133,
+      "acierto": 39.8,
+      "R_medio": 0.34,
+      "R_total": 45.2,
+      "factor": 1.59,
+      "max_caida_R": 7.0,
+      "por_mes": 7.0
+     },
+     "prueba": {
+      "n": 65,
+      "acierto": 40.0,
+      "R_medio": 0.311,
+      "R_total": 20.2,
+      "factor": 1.54,
+      "max_caida_R": 11.2,
+      "por_mes": 6.8
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 15,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.285,
+     "entreno": {
+      "n": 151,
+      "acierto": 35.8,
+      "R_medio": 0.331,
+      "R_total": 50.0,
+      "factor": 1.53,
+      "max_caida_R": 9.3,
+      "por_mes": 7.9
+     },
+     "prueba": {
+      "n": 78,
+      "acierto": 35.9,
+      "R_medio": 0.284,
+      "R_total": 22.1,
+      "factor": 1.44,
+      "max_caida_R": 10.1,
+      "por_mes": 8.2
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 10,
+      "filtro_200": true,
+      "horas_max": 72,
+      "objetivo_R": 3.0,
+      "stop_atr": 3.0
+     },
+     "meseta": 0.277,
+     "entreno": {
+      "n": 160,
+      "acierto": 46.9,
+      "R_medio": 0.295,
+      "R_total": 47.2,
+      "factor": 1.6,
+      "max_caida_R": 10.6,
+      "por_mes": 8.4
+     },
+     "prueba": {
+      "n": 85,
+      "acierto": 36.5,
+      "R_medio": 0.109,
+      "R_total": 9.3,
+      "factor": 1.19,
+      "max_caida_R": 8.2,
+      "por_mes": 8.9
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": true,
+      "canal": 15,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 3.0
+     },
+     "meseta": 0.277,
+     "entreno": {
+      "n": 148,
+      "acierto": 31.1,
+      "R_medio": 0.306,
+      "R_total": 45.2,
+      "factor": 1.68,
+      "max_caida_R": 7.6,
+      "por_mes": 7.8
+     },
+     "prueba": {
+      "n": 73,
+      "acierto": 27.4,
+      "R_medio": 0.189,
+      "R_total": 13.8,
+      "factor": 1.38,
+      "max_caida_R": 10.5,
+      "por_mes": 7.7
+     }
+    }
+   ]
+  },
+  "XAUEUR": {
+   "elegida": {
+    "a_entrada": false,
+    "canal": 40,
+    "filtro_200": true,
+    "horas_max": 120,
+    "objetivo_R": 3.0,
+    "stop_atr": 2.5
+   },
+   "entreno": {
+    "n": 123,
+    "acierto": 39.8,
+    "R_medio": 0.349,
+    "R_total": 43.0,
+    "factor": 1.57,
+    "max_caida_R": 7.2,
+    "por_mes": 6.5
+   },
+   "prueba": {
+    "n": 60,
+    "acierto": 41.7,
+    "R_medio": 0.384,
+    "R_total": 23.1,
+    "factor": 1.65,
+    "max_caida_R": 8.9,
+    "por_mes": 6.3
+   },
+   "todo": {
+    "n": 183,
+    "acierto": 40.4,
+    "R_medio": 0.361,
+    "R_total": 66.0,
+    "factor": 1.6,
+    "max_caida_R": 8.9,
+    "por_mes": 6.4
+   },
+   "meseta_entreno": 0.259,
+   "vecinos_ganan_en_prueba": 100,
+   "variantes": 960,
+   "variantes_ganan_entreno": 87,
+   "variantes_ganan_prueba": 70,
+   "original": {
+    "entreno": {
+     "n": 236,
+     "acierto": 47.9,
+     "R_medio": 0.142,
+     "R_total": 33.5,
+     "factor": 1.27,
+     "max_caida_R": 15.1,
+     "por_mes": 12.4
+    },
+    "prueba": {
+     "n": 127,
+     "acierto": 44.1,
+     "R_medio": 0.086,
+     "R_total": 10.9,
+     "factor": 1.15,
+     "max_caida_R": 10.2,
+     "por_mes": 13.3
+    }
+   },
+   "top5": [
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 40,
+      "filtro_200": true,
+      "horas_max": 120,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.259,
+     "entreno": {
+      "n": 123,
+      "acierto": 39.8,
+      "R_medio": 0.349,
+      "R_total": 43.0,
+      "factor": 1.57,
+      "max_caida_R": 7.2,
+      "por_mes": 6.5
+     },
+     "prueba": {
+      "n": 60,
+      "acierto": 41.7,
+      "R_medio": 0.384,
+      "R_total": 23.1,
+      "factor": 1.65,
+      "max_caida_R": 8.9,
+      "por_mes": 6.3
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 40,
+      "filtro_200": false,
+      "horas_max": 72,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.248,
+     "entreno": {
+      "n": 146,
+      "acierto": 42.5,
+      "R_medio": 0.314,
+      "R_total": 45.8,
+      "factor": 1.58,
+      "max_caida_R": 6.2,
+      "por_mes": 7.7
+     },
+     "prueba": {
+      "n": 76,
+      "acierto": 36.8,
+      "R_medio": 0.249,
+      "R_total": 18.9,
+      "factor": 1.41,
+      "max_caida_R": 9.4,
+      "por_mes": 8.0
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 40,
+      "filtro_200": true,
+      "horas_max": 72,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.248,
+     "entreno": {
+      "n": 139,
+      "acierto": 41.0,
+      "R_medio": 0.296,
+      "R_total": 41.1,
+      "factor": 1.54,
+      "max_caida_R": 5.9,
+      "por_mes": 7.3
+     },
+     "prueba": {
+      "n": 69,
+      "acierto": 40.6,
+      "R_medio": 0.334,
+      "R_total": 23.0,
+      "factor": 1.59,
+      "max_caida_R": 9.4,
+      "por_mes": 7.3
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": true,
+      "canal": 30,
+      "filtro_200": false,
+      "horas_max": 72,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.243,
+     "entreno": {
+      "n": 169,
+      "acierto": 32.5,
+      "R_medio": 0.282,
+      "R_total": 47.7,
+      "factor": 1.67,
+      "max_caida_R": 5.8,
+      "por_mes": 8.9
+     },
+     "prueba": {
+      "n": 91,
+      "acierto": 26.4,
+      "R_medio": 0.126,
+      "R_total": 11.4,
+      "factor": 1.25,
+      "max_caida_R": 8.2,
+      "por_mes": 9.6
+     }
+    },
+    {
+     "cfg": {
+      "a_entrada": false,
+      "canal": 20,
+      "filtro_200": false,
+      "horas_max": 72,
+      "objetivo_R": 3.0,
+      "stop_atr": 2.5
+     },
+     "meseta": 0.241,
+     "entreno": {
+      "n": 166,
+      "acierto": 43.4,
+      "R_medio": 0.288,
+      "R_total": 47.9,
+      "factor": 1.53,
+      "max_caida_R": 7.5,
+      "por_mes": 8.7
+     },
+     "prueba": {
+      "n": 93,
+      "acierto": 32.3,
+      "R_medio": 0.106,
+      "R_total": 9.8,
+      "factor": 1.16,
+      "max_caida_R": 9.3,
+      "por_mes": 9.8
+     }
+    }
+   ]
+  }
+ }
+}
