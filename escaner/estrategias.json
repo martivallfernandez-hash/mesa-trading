@@ -1,0 +1,1569 @@
+{
+ "generado": 1793819422,
+ "mercados": {
+  "EURUSD": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 254,
+      "acierto": 34.3,
+      "R_medio": -0.139,
+      "R_total": -35.2,
+      "factor": 0.8,
+      "max_caida_R": 40.6,
+      "por_mes": 11.4
+     },
+     "prueba": {
+      "n": 128,
+      "acierto": 35.2,
+      "R_medio": -0.048,
+      "R_total": -6.1,
+      "factor": 0.93,
+      "max_caida_R": 21.0,
+      "por_mes": 11.4
+     },
+     "todo": {
+      "n": 382,
+      "acierto": 34.6,
+      "R_medio": -0.108,
+      "R_total": -41.3,
+      "factor": 0.84,
+      "max_caida_R": 59.6,
+      "por_mes": 11.4
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 368,
+      "acierto": 40.2,
+      "R_medio": -0.034,
+      "R_total": -12.5,
+      "factor": 0.94,
+      "max_caida_R": 29.4,
+      "por_mes": 16.6
+     },
+     "prueba": {
+      "n": 190,
+      "acierto": 38.9,
+      "R_medio": -0.077,
+      "R_total": -14.6,
+      "factor": 0.88,
+      "max_caida_R": 30.0,
+      "por_mes": 16.7
+     },
+     "todo": {
+      "n": 558,
+      "acierto": 39.8,
+      "R_medio": -0.049,
+      "R_total": -27.1,
+      "factor": 0.92,
+      "max_caida_R": 38.9,
+      "por_mes": 16.6
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 307,
+      "acierto": 47.9,
+      "R_medio": 0.079,
+      "R_total": 24.1,
+      "factor": 1.16,
+      "max_caida_R": 13.8,
+      "por_mes": 13.8
+     },
+     "prueba": {
+      "n": 147,
+      "acierto": 46.3,
+      "R_medio": -0.044,
+      "R_total": -6.4,
+      "factor": 0.92,
+      "max_caida_R": 24.9,
+      "por_mes": 13.0
+     },
+     "todo": {
+      "n": 454,
+      "acierto": 47.4,
+      "R_medio": 0.039,
+      "R_total": 17.7,
+      "factor": 1.08,
+      "max_caida_R": 25.2,
+      "por_mes": 13.5
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 382,
+      "acierto": 44.5,
+      "R_medio": -0.09,
+      "R_total": -34.5,
+      "factor": 0.8,
+      "max_caida_R": 48.2,
+      "por_mes": 17.2
+     },
+     "prueba": {
+      "n": 177,
+      "acierto": 49.2,
+      "R_medio": -0.012,
+      "R_total": -2.1,
+      "factor": 0.97,
+      "max_caida_R": 16.6,
+      "por_mes": 15.5
+     },
+     "todo": {
+      "n": 559,
+      "acierto": 46.0,
+      "R_medio": -0.065,
+      "R_total": -36.6,
+      "factor": 0.85,
+      "max_caida_R": 48.2,
+      "por_mes": 16.6
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 314,
+      "acierto": 47.5,
+      "R_medio": -0.103,
+      "R_total": -32.2,
+      "factor": 0.81,
+      "max_caida_R": 34.1,
+      "por_mes": 14.2
+     },
+     "prueba": {
+      "n": 172,
+      "acierto": 58.1,
+      "R_medio": 0.099,
+      "R_total": 17.0,
+      "factor": 1.23,
+      "max_caida_R": 8.4,
+      "por_mes": 15.1
+     },
+     "todo": {
+      "n": 486,
+      "acierto": 51.2,
+      "R_medio": -0.031,
+      "R_total": -15.2,
+      "factor": 0.94,
+      "max_caida_R": 34.2,
+      "por_mes": 14.5
+     }
+    }
+   },
+   "elegida": null
+  },
+  "GBPUSD": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 249,
+      "acierto": 33.7,
+      "R_medio": -0.077,
+      "R_total": -19.1,
+      "factor": 0.89,
+      "max_caida_R": 36.4,
+      "por_mes": 11.2
+     },
+     "prueba": {
+      "n": 136,
+      "acierto": 28.7,
+      "R_medio": -0.256,
+      "R_total": -34.8,
+      "factor": 0.65,
+      "max_caida_R": 42.9,
+      "por_mes": 12.2
+     },
+     "todo": {
+      "n": 385,
+      "acierto": 31.9,
+      "R_medio": -0.14,
+      "R_total": -53.9,
+      "factor": 0.8,
+      "max_caida_R": 71.2,
+      "por_mes": 11.5
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 383,
+      "acierto": 41.8,
+      "R_medio": 0.005,
+      "R_total": 2.1,
+      "factor": 1.01,
+      "max_caida_R": 21.8,
+      "por_mes": 17.3
+     },
+     "prueba": {
+      "n": 201,
+      "acierto": 37.3,
+      "R_medio": -0.124,
+      "R_total": -25.0,
+      "factor": 0.81,
+      "max_caida_R": 35.5,
+      "por_mes": 18.0
+     },
+     "todo": {
+      "n": 584,
+      "acierto": 40.2,
+      "R_medio": -0.039,
+      "R_total": -22.9,
+      "factor": 0.94,
+      "max_caida_R": 48.5,
+      "por_mes": 17.4
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 351,
+      "acierto": 42.2,
+      "R_medio": -0.052,
+      "R_total": -18.2,
+      "factor": 0.91,
+      "max_caida_R": 23.0,
+      "por_mes": 15.8
+     },
+     "prueba": {
+      "n": 167,
+      "acierto": 44.9,
+      "R_medio": 0.009,
+      "R_total": 1.5,
+      "factor": 1.02,
+      "max_caida_R": 18.3,
+      "por_mes": 14.7
+     },
+     "todo": {
+      "n": 518,
+      "acierto": 43.1,
+      "R_medio": -0.032,
+      "R_total": -16.7,
+      "factor": 0.94,
+      "max_caida_R": 36.1,
+      "por_mes": 15.4
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 357,
+      "acierto": 48.7,
+      "R_medio": -0.053,
+      "R_total": -18.8,
+      "factor": 0.88,
+      "max_caida_R": 38.0,
+      "por_mes": 16.1
+     },
+     "prueba": {
+      "n": 189,
+      "acierto": 48.7,
+      "R_medio": -0.036,
+      "R_total": -6.8,
+      "factor": 0.91,
+      "max_caida_R": 16.8,
+      "por_mes": 16.6
+     },
+     "todo": {
+      "n": 546,
+      "acierto": 48.7,
+      "R_medio": -0.047,
+      "R_total": -25.6,
+      "factor": 0.89,
+      "max_caida_R": 44.7,
+      "por_mes": 16.2
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 304,
+      "acierto": 51.6,
+      "R_medio": -0.019,
+      "R_total": -5.7,
+      "factor": 0.96,
+      "max_caida_R": 17.6,
+      "por_mes": 13.7
+     },
+     "prueba": {
+      "n": 169,
+      "acierto": 50.9,
+      "R_medio": -0.058,
+      "R_total": -9.8,
+      "factor": 0.89,
+      "max_caida_R": 16.7,
+      "por_mes": 15.0
+     },
+     "todo": {
+      "n": 473,
+      "acierto": 51.4,
+      "R_medio": -0.033,
+      "R_total": -15.5,
+      "factor": 0.94,
+      "max_caida_R": 17.7,
+      "por_mes": 14.1
+     }
+    }
+   },
+   "elegida": null
+  },
+  "USDJPY": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 241,
+      "acierto": 36.5,
+      "R_medio": -0.024,
+      "R_total": -5.8,
+      "factor": 0.96,
+      "max_caida_R": 28.6,
+      "por_mes": 10.9
+     },
+     "prueba": {
+      "n": 119,
+      "acierto": 28.6,
+      "R_medio": -0.282,
+      "R_total": -33.6,
+      "factor": 0.61,
+      "max_caida_R": 34.1,
+      "por_mes": 10.5
+     },
+     "todo": {
+      "n": 360,
+      "acierto": 33.9,
+      "R_medio": -0.109,
+      "R_total": -39.4,
+      "factor": 0.83,
+      "max_caida_R": 61.7,
+      "por_mes": 10.7
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 350,
+      "acierto": 42.0,
+      "R_medio": 0.021,
+      "R_total": 7.4,
+      "factor": 1.04,
+      "max_caida_R": 21.3,
+      "por_mes": 15.8
+     },
+     "prueba": {
+      "n": 173,
+      "acierto": 34.1,
+      "R_medio": -0.202,
+      "R_total": -34.9,
+      "factor": 0.7,
+      "max_caida_R": 40.5,
+      "por_mes": 15.2
+     },
+     "todo": {
+      "n": 523,
+      "acierto": 39.4,
+      "R_medio": -0.053,
+      "R_total": -27.5,
+      "factor": 0.92,
+      "max_caida_R": 52.4,
+      "por_mes": 15.6
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 219,
+      "acierto": 46.6,
+      "R_medio": 0.015,
+      "R_total": 3.3,
+      "factor": 1.03,
+      "max_caida_R": 11.1,
+      "por_mes": 9.9
+     },
+     "prueba": {
+      "n": 124,
+      "acierto": 46.8,
+      "R_medio": 0.036,
+      "R_total": 4.5,
+      "factor": 1.08,
+      "max_caida_R": 15.3,
+      "por_mes": 11.0
+     },
+     "todo": {
+      "n": 343,
+      "acierto": 46.6,
+      "R_medio": 0.023,
+      "R_total": 7.8,
+      "factor": 1.05,
+      "max_caida_R": 15.3,
+      "por_mes": 10.2
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 362,
+      "acierto": 50.8,
+      "R_medio": -0.027,
+      "R_total": -9.8,
+      "factor": 0.93,
+      "max_caida_R": 19.6,
+      "por_mes": 16.3
+     },
+     "prueba": {
+      "n": 177,
+      "acierto": 48.0,
+      "R_medio": -0.09,
+      "R_total": -15.9,
+      "factor": 0.79,
+      "max_caida_R": 18.1,
+      "por_mes": 15.7
+     },
+     "todo": {
+      "n": 539,
+      "acierto": 49.9,
+      "R_medio": -0.048,
+      "R_total": -25.7,
+      "factor": 0.89,
+      "max_caida_R": 33.4,
+      "por_mes": 16.1
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 289,
+      "acierto": 43.3,
+      "R_medio": -0.168,
+      "R_total": -48.4,
+      "factor": 0.71,
+      "max_caida_R": 49.3,
+      "por_mes": 13.0
+     },
+     "prueba": {
+      "n": 159,
+      "acierto": 51.6,
+      "R_medio": -0.007,
+      "R_total": -1.2,
+      "factor": 0.98,
+      "max_caida_R": 11.8,
+      "por_mes": 14.0
+     },
+     "todo": {
+      "n": 448,
+      "acierto": 46.2,
+      "R_medio": -0.111,
+      "R_total": -49.6,
+      "factor": 0.8,
+      "max_caida_R": 61.1,
+      "por_mes": 13.3
+     }
+    }
+   },
+   "elegida": null
+  },
+  "AUDUSD": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 255,
+      "acierto": 33.3,
+      "R_medio": -0.138,
+      "R_total": -35.2,
+      "factor": 0.8,
+      "max_caida_R": 45.2,
+      "por_mes": 11.5
+     },
+     "prueba": {
+      "n": 124,
+      "acierto": 33.9,
+      "R_medio": -0.186,
+      "R_total": -23.1,
+      "factor": 0.74,
+      "max_caida_R": 28.0,
+      "por_mes": 11.1
+     },
+     "todo": {
+      "n": 379,
+      "acierto": 33.5,
+      "R_medio": -0.154,
+      "R_total": -58.2,
+      "factor": 0.78,
+      "max_caida_R": 63.1,
+      "por_mes": 11.3
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 355,
+      "acierto": 38.9,
+      "R_medio": -0.077,
+      "R_total": -27.3,
+      "factor": 0.88,
+      "max_caida_R": 40.4,
+      "por_mes": 16.0
+     },
+     "prueba": {
+      "n": 212,
+      "acierto": 40.1,
+      "R_medio": -0.055,
+      "R_total": -11.6,
+      "factor": 0.91,
+      "max_caida_R": 23.6,
+      "por_mes": 18.8
+     },
+     "todo": {
+      "n": 567,
+      "acierto": 39.3,
+      "R_medio": -0.069,
+      "R_total": -39.0,
+      "factor": 0.89,
+      "max_caida_R": 52.8,
+      "por_mes": 16.9
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 230,
+      "acierto": 40.4,
+      "R_medio": -0.134,
+      "R_total": -30.8,
+      "factor": 0.75,
+      "max_caida_R": 31.8,
+      "por_mes": 10.4
+     },
+     "prueba": {
+      "n": 117,
+      "acierto": 46.2,
+      "R_medio": -0.029,
+      "R_total": -3.3,
+      "factor": 0.95,
+      "max_caida_R": 8.2,
+      "por_mes": 10.3
+     },
+     "todo": {
+      "n": 347,
+      "acierto": 42.4,
+      "R_medio": -0.098,
+      "R_total": -34.2,
+      "factor": 0.82,
+      "max_caida_R": 40.0,
+      "por_mes": 10.3
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 369,
+      "acierto": 49.6,
+      "R_medio": -0.047,
+      "R_total": -17.4,
+      "factor": 0.89,
+      "max_caida_R": 19.7,
+      "por_mes": 16.8
+     },
+     "prueba": {
+      "n": 168,
+      "acierto": 46.4,
+      "R_medio": -0.066,
+      "R_total": -11.1,
+      "factor": 0.85,
+      "max_caida_R": 19.1,
+      "por_mes": 14.8
+     },
+     "todo": {
+      "n": 537,
+      "acierto": 48.6,
+      "R_medio": -0.053,
+      "R_total": -28.5,
+      "factor": 0.88,
+      "max_caida_R": 29.3,
+      "por_mes": 16.0
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 313,
+      "acierto": 46.0,
+      "R_medio": -0.143,
+      "R_total": -44.8,
+      "factor": 0.75,
+      "max_caida_R": 49.2,
+      "por_mes": 14.1
+     },
+     "prueba": {
+      "n": 146,
+      "acierto": 53.4,
+      "R_medio": -0.018,
+      "R_total": -2.6,
+      "factor": 0.97,
+      "max_caida_R": 10.6,
+      "por_mes": 13.1
+     },
+     "todo": {
+      "n": 459,
+      "acierto": 48.4,
+      "R_medio": -0.103,
+      "R_total": -47.4,
+      "factor": 0.81,
+      "max_caida_R": 54.6,
+      "por_mes": 13.7
+     }
+    }
+   },
+   "elegida": null
+  },
+  "AUDCAD": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 237,
+      "acierto": 32.1,
+      "R_medio": -0.248,
+      "R_total": -58.7,
+      "factor": 0.66,
+      "max_caida_R": 63.8,
+      "por_mes": 10.7
+     },
+     "prueba": {
+      "n": 114,
+      "acierto": 34.2,
+      "R_medio": -0.26,
+      "R_total": -29.6,
+      "factor": 0.63,
+      "max_caida_R": 29.6,
+      "por_mes": 10.0
+     },
+     "todo": {
+      "n": 351,
+      "acierto": 32.8,
+      "R_medio": -0.252,
+      "R_total": -88.4,
+      "factor": 0.65,
+      "max_caida_R": 93.5,
+      "por_mes": 10.4
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 201,
+      "acierto": 31.8,
+      "R_medio": -0.337,
+      "R_total": -67.8,
+      "factor": 0.51,
+      "max_caida_R": 70.5,
+      "por_mes": 9.1
+     },
+     "prueba": {
+      "n": 116,
+      "acierto": 33.6,
+      "R_medio": -0.204,
+      "R_total": -23.7,
+      "factor": 0.68,
+      "max_caida_R": 30.1,
+      "por_mes": 10.3
+     },
+     "todo": {
+      "n": 317,
+      "acierto": 32.5,
+      "R_medio": -0.288,
+      "R_total": -91.4,
+      "factor": 0.57,
+      "max_caida_R": 93.6,
+      "por_mes": 9.4
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 145,
+      "acierto": 39.3,
+      "R_medio": -0.186,
+      "R_total": -27.0,
+      "factor": 0.68,
+      "max_caida_R": 29.5,
+      "por_mes": 6.6
+     },
+     "prueba": {
+      "n": 83,
+      "acierto": 37.3,
+      "R_medio": -0.158,
+      "R_total": -13.1,
+      "factor": 0.73,
+      "max_caida_R": 14.1,
+      "por_mes": 7.4
+     },
+     "todo": {
+      "n": 228,
+      "acierto": 38.6,
+      "R_medio": -0.176,
+      "R_total": -40.1,
+      "factor": 0.7,
+      "max_caida_R": 43.3,
+      "por_mes": 6.8
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 327,
+      "acierto": 48.9,
+      "R_medio": -0.038,
+      "R_total": -12.3,
+      "factor": 0.87,
+      "max_caida_R": 20.9,
+      "por_mes": 14.8
+     },
+     "prueba": {
+      "n": 170,
+      "acierto": 44.1,
+      "R_medio": -0.089,
+      "R_total": -15.1,
+      "factor": 0.72,
+      "max_caida_R": 21.4,
+      "por_mes": 15.0
+     },
+     "todo": {
+      "n": 497,
+      "acierto": 47.3,
+      "R_medio": -0.055,
+      "R_total": -27.4,
+      "factor": 0.82,
+      "max_caida_R": 35.7,
+      "por_mes": 14.8
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 377,
+      "acierto": 49.1,
+      "R_medio": -0.054,
+      "R_total": -20.3,
+      "factor": 0.89,
+      "max_caida_R": 22.9,
+      "por_mes": 17.0
+     },
+     "prueba": {
+      "n": 198,
+      "acierto": 51.0,
+      "R_medio": -0.026,
+      "R_total": -5.2,
+      "factor": 0.94,
+      "max_caida_R": 16.8,
+      "por_mes": 17.4
+     },
+     "todo": {
+      "n": 575,
+      "acierto": 49.7,
+      "R_medio": -0.044,
+      "R_total": -25.5,
+      "factor": 0.91,
+      "max_caida_R": 27.9,
+      "por_mes": 17.1
+     }
+    }
+   },
+   "elegida": null
+  },
+  "NZDCAD": {
+   "dias": 1022,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 239,
+      "acierto": 33.5,
+      "R_medio": -0.226,
+      "R_total": -54.1,
+      "factor": 0.7,
+      "max_caida_R": 54.3,
+      "por_mes": 10.8
+     },
+     "prueba": {
+      "n": 140,
+      "acierto": 30.0,
+      "R_medio": -0.287,
+      "R_total": -40.1,
+      "factor": 0.63,
+      "max_caida_R": 49.4,
+      "por_mes": 12.3
+     },
+     "todo": {
+      "n": 379,
+      "acierto": 32.2,
+      "R_medio": -0.249,
+      "R_total": -94.3,
+      "factor": 0.67,
+      "max_caida_R": 103.6,
+      "por_mes": 11.3
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 297,
+      "acierto": 39.1,
+      "R_medio": -0.135,
+      "R_total": -40.0,
+      "factor": 0.8,
+      "max_caida_R": 45.9,
+      "por_mes": 13.4
+     },
+     "prueba": {
+      "n": 158,
+      "acierto": 31.0,
+      "R_medio": -0.321,
+      "R_total": -50.7,
+      "factor": 0.57,
+      "max_caida_R": 50.7,
+      "por_mes": 14.0
+     },
+     "todo": {
+      "n": 455,
+      "acierto": 36.3,
+      "R_medio": -0.199,
+      "R_total": -90.8,
+      "factor": 0.71,
+      "max_caida_R": 94.0,
+      "por_mes": 13.5
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 215,
+      "acierto": 41.9,
+      "R_medio": -0.163,
+      "R_total": -35.1,
+      "factor": 0.72,
+      "max_caida_R": 36.4,
+      "por_mes": 9.8
+     },
+     "prueba": {
+      "n": 122,
+      "acierto": 45.1,
+      "R_medio": -0.085,
+      "R_total": -10.3,
+      "factor": 0.84,
+      "max_caida_R": 17.7,
+      "por_mes": 10.8
+     },
+     "todo": {
+      "n": 337,
+      "acierto": 43.0,
+      "R_medio": -0.135,
+      "R_total": -45.4,
+      "factor": 0.76,
+      "max_caida_R": 47.5,
+      "por_mes": 10.0
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 344,
+      "acierto": 46.2,
+      "R_medio": -0.098,
+      "R_total": -33.7,
+      "factor": 0.76,
+      "max_caida_R": 42.8,
+      "por_mes": 15.6
+     },
+     "prueba": {
+      "n": 169,
+      "acierto": 47.3,
+      "R_medio": -0.081,
+      "R_total": -13.7,
+      "factor": 0.81,
+      "max_caida_R": 22.0,
+      "por_mes": 14.9
+     },
+     "todo": {
+      "n": 513,
+      "acierto": 46.6,
+      "R_medio": -0.092,
+      "R_total": -47.4,
+      "factor": 0.78,
+      "max_caida_R": 53.6,
+      "por_mes": 15.3
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 363,
+      "acierto": 49.6,
+      "R_medio": -0.153,
+      "R_total": -55.4,
+      "factor": 0.73,
+      "max_caida_R": 60.9,
+      "por_mes": 16.4
+     },
+     "prueba": {
+      "n": 190,
+      "acierto": 51.1,
+      "R_medio": -0.112,
+      "R_total": -21.2,
+      "factor": 0.8,
+      "max_caida_R": 32.3,
+      "por_mes": 16.7
+     },
+     "todo": {
+      "n": 553,
+      "acierto": 50.1,
+      "R_medio": -0.138,
+      "R_total": -76.6,
+      "factor": 0.75,
+      "max_caida_R": 87.3,
+      "por_mes": 16.5
+     }
+    }
+   },
+   "elegida": null
+  },
+  "XAUUSD": {
+   "dias": 875,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 182,
+      "acierto": 37.4,
+      "R_medio": -0.011,
+      "R_total": -2.0,
+      "factor": 0.98,
+      "max_caida_R": 17.0,
+      "por_mes": 9.6
+     },
+     "prueba": {
+      "n": 92,
+      "acierto": 37.0,
+      "R_medio": 0.042,
+      "R_total": 3.9,
+      "factor": 1.07,
+      "max_caida_R": 8.7,
+      "por_mes": 9.7
+     },
+     "todo": {
+      "n": 274,
+      "acierto": 37.2,
+      "R_medio": 0.007,
+      "R_total": 1.9,
+      "factor": 1.01,
+      "max_caida_R": 17.0,
+      "por_mes": 9.6
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 259,
+      "acierto": 44.8,
+      "R_medio": 0.072,
+      "R_total": 18.5,
+      "factor": 1.13,
+      "max_caida_R": 13.9,
+      "por_mes": 13.6
+     },
+     "prueba": {
+      "n": 133,
+      "acierto": 45.9,
+      "R_medio": 0.14,
+      "R_total": 18.6,
+      "factor": 1.26,
+      "max_caida_R": 9.2,
+      "por_mes": 14.0
+     },
+     "todo": {
+      "n": 392,
+      "acierto": 45.2,
+      "R_medio": 0.095,
+      "R_total": 37.1,
+      "factor": 1.17,
+      "max_caida_R": 13.9,
+      "por_mes": 13.7
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 167,
+      "acierto": 38.3,
+      "R_medio": -0.148,
+      "R_total": -24.7,
+      "factor": 0.74,
+      "max_caida_R": 33.7,
+      "por_mes": 9.0
+     },
+     "prueba": {
+      "n": 73,
+      "acierto": 56.2,
+      "R_medio": 0.26,
+      "R_total": 19.0,
+      "factor": 1.77,
+      "max_caida_R": 3.0,
+      "por_mes": 7.7
+     },
+     "todo": {
+      "n": 240,
+      "acierto": 43.8,
+      "R_medio": -0.024,
+      "R_total": -5.8,
+      "factor": 0.95,
+      "max_caida_R": 33.7,
+      "por_mes": 8.4
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 274,
+      "acierto": 48.2,
+      "R_medio": -0.064,
+      "R_total": -17.7,
+      "factor": 0.83,
+      "max_caida_R": 31.4,
+      "por_mes": 14.5
+     },
+     "prueba": {
+      "n": 157,
+      "acierto": 48.4,
+      "R_medio": -0.041,
+      "R_total": -6.4,
+      "factor": 0.9,
+      "max_caida_R": 12.5,
+      "por_mes": 16.5
+     },
+     "todo": {
+      "n": 431,
+      "acierto": 48.3,
+      "R_medio": -0.056,
+      "R_total": -24.1,
+      "factor": 0.86,
+      "max_caida_R": 31.4,
+      "por_mes": 15.0
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 255,
+      "acierto": 51.8,
+      "R_medio": 0.011,
+      "R_total": 2.9,
+      "factor": 1.02,
+      "max_caida_R": 15.0,
+      "por_mes": 13.5
+     },
+     "prueba": {
+      "n": 125,
+      "acierto": 48.0,
+      "R_medio": -0.041,
+      "R_total": -5.2,
+      "factor": 0.92,
+      "max_caida_R": 12.5,
+      "por_mes": 13.5
+     },
+     "todo": {
+      "n": 380,
+      "acierto": 50.5,
+      "R_medio": -0.006,
+      "R_total": -2.3,
+      "factor": 0.99,
+      "max_caida_R": 15.0,
+      "por_mes": 13.3
+     }
+    }
+   },
+   "elegida": "ruptura_canal"
+  },
+  "XAUEUR": {
+   "dias": 875,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 165,
+      "acierto": 42.4,
+      "R_medio": 0.12,
+      "R_total": 19.7,
+      "factor": 1.22,
+      "max_caida_R": 8.5,
+      "por_mes": 8.8
+     },
+     "prueba": {
+      "n": 97,
+      "acierto": 32.0,
+      "R_medio": -0.143,
+      "R_total": -13.8,
+      "factor": 0.79,
+      "max_caida_R": 20.3,
+      "por_mes": 10.2
+     },
+     "todo": {
+      "n": 262,
+      "acierto": 38.5,
+      "R_medio": 0.023,
+      "R_total": 5.9,
+      "factor": 1.04,
+      "max_caida_R": 20.3,
+      "por_mes": 9.2
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 235,
+      "acierto": 47.2,
+      "R_medio": 0.119,
+      "R_total": 27.9,
+      "factor": 1.23,
+      "max_caida_R": 18.1,
+      "por_mes": 12.3
+     },
+     "prueba": {
+      "n": 128,
+      "acierto": 43.8,
+      "R_medio": 0.077,
+      "R_total": 9.9,
+      "factor": 1.14,
+      "max_caida_R": 10.2,
+      "por_mes": 13.4
+     },
+     "todo": {
+      "n": 363,
+      "acierto": 46.0,
+      "R_medio": 0.104,
+      "R_total": 37.7,
+      "factor": 1.19,
+      "max_caida_R": 18.1,
+      "por_mes": 12.7
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 168,
+      "acierto": 42.9,
+      "R_medio": -0.085,
+      "R_total": -14.2,
+      "factor": 0.85,
+      "max_caida_R": 22.4,
+      "por_mes": 9.1
+     },
+     "prueba": {
+      "n": 64,
+      "acierto": 54.7,
+      "R_medio": 0.135,
+      "R_total": 8.6,
+      "factor": 1.36,
+      "max_caida_R": 4.1,
+      "por_mes": 6.7
+     },
+     "todo": {
+      "n": 232,
+      "acierto": 46.1,
+      "R_medio": -0.024,
+      "R_total": -5.6,
+      "factor": 0.95,
+      "max_caida_R": 22.6,
+      "por_mes": 8.1
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 249,
+      "acierto": 46.2,
+      "R_medio": -0.069,
+      "R_total": -17.2,
+      "factor": 0.83,
+      "max_caida_R": 23.7,
+      "por_mes": 13.2
+     },
+     "prueba": {
+      "n": 136,
+      "acierto": 44.1,
+      "R_medio": -0.147,
+      "R_total": -20.0,
+      "factor": 0.67,
+      "max_caida_R": 23.0,
+      "por_mes": 14.3
+     },
+     "todo": {
+      "n": 385,
+      "acierto": 45.5,
+      "R_medio": -0.097,
+      "R_total": -37.2,
+      "factor": 0.77,
+      "max_caida_R": 37.2,
+      "por_mes": 13.4
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 260,
+      "acierto": 48.5,
+      "R_medio": -0.042,
+      "R_total": -10.8,
+      "factor": 0.92,
+      "max_caida_R": 20.9,
+      "por_mes": 13.7
+     },
+     "prueba": {
+      "n": 131,
+      "acierto": 51.1,
+      "R_medio": 0.007,
+      "R_total": 1.0,
+      "factor": 1.02,
+      "max_caida_R": 10.2,
+      "por_mes": 14.0
+     },
+     "todo": {
+      "n": 391,
+      "acierto": 49.4,
+      "R_medio": -0.025,
+      "R_total": -9.8,
+      "factor": 0.95,
+      "max_caida_R": 22.4,
+      "por_mes": 13.6
+     }
+    }
+   },
+   "elegida": "ruptura_canal"
+  },
+  "BTCUSDT": {
+   "dias": 730,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 237,
+      "acierto": 35.4,
+      "R_medio": -0.005,
+      "R_total": -1.1,
+      "factor": 0.99,
+      "max_caida_R": 16.9,
+      "por_mes": 14.9
+     },
+     "prueba": {
+      "n": 134,
+      "acierto": 34.3,
+      "R_medio": -0.061,
+      "R_total": -8.2,
+      "factor": 0.91,
+      "max_caida_R": 17.8,
+      "por_mes": 16.7
+     },
+     "todo": {
+      "n": 371,
+      "acierto": 35.0,
+      "R_medio": -0.025,
+      "R_total": -9.3,
+      "factor": 0.96,
+      "max_caida_R": 23.7,
+      "por_mes": 15.5
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 344,
+      "acierto": 40.1,
+      "R_medio": -0.022,
+      "R_total": -7.5,
+      "factor": 0.96,
+      "max_caida_R": 23.7,
+      "por_mes": 21.7
+     },
+     "prueba": {
+      "n": 169,
+      "acierto": 42.0,
+      "R_medio": 0.032,
+      "R_total": 5.4,
+      "factor": 1.06,
+      "max_caida_R": 19.0,
+      "por_mes": 20.9
+     },
+     "todo": {
+      "n": 513,
+      "acierto": 40.7,
+      "R_medio": -0.004,
+      "R_total": -2.0,
+      "factor": 0.99,
+      "max_caida_R": 23.7,
+      "por_mes": 21.4
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 138,
+      "acierto": 41.3,
+      "R_medio": -0.044,
+      "R_total": -6.0,
+      "factor": 0.92,
+      "max_caida_R": 17.5,
+      "por_mes": 8.7
+     },
+     "prueba": {
+      "n": 70,
+      "acierto": 50.0,
+      "R_medio": 0.097,
+      "R_total": 6.8,
+      "factor": 1.2,
+      "max_caida_R": 8.6,
+      "por_mes": 8.8
+     },
+     "todo": {
+      "n": 208,
+      "acierto": 44.2,
+      "R_medio": 0.004,
+      "R_total": 0.8,
+      "factor": 1.01,
+      "max_caida_R": 21.2,
+      "por_mes": 8.7
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 354,
+      "acierto": 52.3,
+      "R_medio": 0.03,
+      "R_total": 10.6,
+      "factor": 1.08,
+      "max_caida_R": 16.0,
+      "por_mes": 22.2
+     },
+     "prueba": {
+      "n": 177,
+      "acierto": 49.2,
+      "R_medio": -0.033,
+      "R_total": -5.8,
+      "factor": 0.92,
+      "max_caida_R": 15.1,
+      "por_mes": 22.0
+     },
+     "todo": {
+      "n": 531,
+      "acierto": 51.2,
+      "R_medio": 0.009,
+      "R_total": 4.9,
+      "factor": 1.02,
+      "max_caida_R": 23.2,
+      "por_mes": 22.1
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 352,
+      "acierto": 53.4,
+      "R_medio": 0.044,
+      "R_total": 15.6,
+      "factor": 1.09,
+      "max_caida_R": 14.3,
+      "por_mes": 22.2
+     },
+     "prueba": {
+      "n": 181,
+      "acierto": 40.9,
+      "R_medio": -0.204,
+      "R_total": -37.0,
+      "factor": 0.65,
+      "max_caida_R": 45.4,
+      "por_mes": 22.3
+     },
+     "todo": {
+      "n": 533,
+      "acierto": 49.2,
+      "R_medio": -0.04,
+      "R_total": -21.4,
+      "factor": 0.92,
+      "max_caida_R": 51.2,
+      "por_mes": 22.2
+     }
+    }
+   },
+   "elegida": null
+  },
+  "ETHUSDT": {
+   "dias": 730,
+   "estrategias": {
+    "tendencia_retroceso": {
+     "nombre": "Tendencia + retroceso",
+     "entreno": {
+      "n": 239,
+      "acierto": 32.6,
+      "R_medio": -0.115,
+      "R_total": -27.6,
+      "factor": 0.83,
+      "max_caida_R": 37.8,
+      "por_mes": 15.0
+     },
+     "prueba": {
+      "n": 122,
+      "acierto": 38.5,
+      "R_medio": -0.006,
+      "R_total": -0.8,
+      "factor": 0.99,
+      "max_caida_R": 14.7,
+      "por_mes": 15.5
+     },
+     "todo": {
+      "n": 361,
+      "acierto": 34.6,
+      "R_medio": -0.079,
+      "R_total": -28.4,
+      "factor": 0.88,
+      "max_caida_R": 43.0,
+      "por_mes": 15.1
+     }
+    },
+    "ruptura_canal": {
+     "nombre": "Ruptura de canal de 20 h",
+     "entreno": {
+      "n": 340,
+      "acierto": 41.8,
+      "R_medio": 0.022,
+      "R_total": 7.4,
+      "factor": 1.04,
+      "max_caida_R": 16.2,
+      "por_mes": 21.4
+     },
+     "prueba": {
+      "n": 166,
+      "acierto": 37.3,
+      "R_medio": -0.109,
+      "R_total": -18.1,
+      "factor": 0.83,
+      "max_caida_R": 29.5,
+      "por_mes": 20.5
+     },
+     "todo": {
+      "n": 506,
+      "acierto": 40.3,
+      "R_medio": -0.021,
+      "R_total": -10.7,
+      "factor": 0.96,
+      "max_caida_R": 29.5,
+      "por_mes": 21.1
+     }
+    },
+    "ruptura_londres": {
+     "nombre": "Ruptura de Londres",
+     "entreno": {
+      "n": 128,
+      "acierto": 38.3,
+      "R_medio": -0.149,
+      "R_total": -19.1,
+      "factor": 0.72,
+      "max_caida_R": 28.7,
+      "por_mes": 8.1
+     },
+     "prueba": {
+      "n": 70,
+      "acierto": 41.4,
+      "R_medio": -0.064,
+      "R_total": -4.5,
+      "factor": 0.88,
+      "max_caida_R": 9.0,
+      "por_mes": 8.8
+     },
+     "todo": {
+      "n": 198,
+      "acierto": 39.4,
+      "R_medio": -0.119,
+      "R_total": -23.6,
+      "factor": 0.78,
+      "max_caida_R": 36.9,
+      "por_mes": 8.3
+     }
+    },
+    "reversion_rsi2": {
+     "nombre": "Reversión con RSI(2)",
+     "entreno": {
+      "n": 350,
+      "acierto": 49.4,
+      "R_medio": -0.058,
+      "R_total": -20.2,
+      "factor": 0.86,
+      "max_caida_R": 30.8,
+      "por_mes": 22.0
+     },
+     "prueba": {
+      "n": 168,
+      "acierto": 42.9,
+      "R_medio": -0.077,
+      "R_total": -13.0,
+      "factor": 0.8,
+      "max_caida_R": 17.7,
+      "por_mes": 21.0
+     },
+     "todo": {
+      "n": 518,
+      "acierto": 47.3,
+      "R_medio": -0.064,
+      "R_total": -33.2,
+      "factor": 0.84,
+      "max_caida_R": 42.2,
+      "por_mes": 21.6
+     }
+    },
+    "bollinger_lateral": {
+     "nombre": "Rebote en Bollinger (lateral)",
+     "entreno": {
+      "n": 369,
+      "acierto": 48.5,
+      "R_medio": -0.065,
+      "R_total": -23.9,
+      "factor": 0.88,
+      "max_caida_R": 33.1,
+      "por_mes": 23.2
+     },
+     "prueba": {
+      "n": 182,
+      "acierto": 46.7,
+      "R_medio": -0.122,
+      "R_total": -22.3,
+      "factor": 0.78,
+      "max_caida_R": 26.4,
+      "por_mes": 22.5
+     },
+     "todo": {
+      "n": 551,
+      "acierto": 47.9,
+      "R_medio": -0.084,
+      "R_total": -46.2,
+      "factor": 0.84,
+      "max_caida_R": 56.9,
+      "por_mes": 23.0
+     }
+    }
+   },
+   "elegida": null
+  }
+ },
+ "ranking": [
+  "XAUUSD",
+  "XAUEUR"
+ ]
+}

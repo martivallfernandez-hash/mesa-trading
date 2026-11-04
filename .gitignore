@@ -2,3 +2,4 @@ escaner/escaner.log
 escaner/senales_enviadas.json
 escaner/config.json
 datos-prueba.json
+escaner/__pycache__/

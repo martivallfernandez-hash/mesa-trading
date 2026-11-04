@@ -47,7 +47,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* Navegación inferior (móvil) */
 .bottom{position:fixed;inset:auto 0 0 0;z-index:20;background:var(--panel);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (min-width:900px){.bottom{display:none}}
 .bottom .tab{padding:14px 4px;border-radius:0;font-size:13px}
 .bottom .tab[aria-selected="true"]{background:none;color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
@@ -121,6 +121,7 @@ canvas{width:100%;height:220px;display:block}
     <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
     <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
     <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+    <button class="tab" role="tab" data-view="senales" aria-selected="false">Señales</button>
     <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
   </nav>
   <div class="sessions" id="sessions" aria-label="Sesiones de mercado"></div>
@@ -211,6 +212,26 @@ canvas{width:100%;height:220px;display:block}
     <p class="foot">Lotes estándar de 100.000 unidades (oro: 100 onzas; cripto: unidades de la moneda). El valor del pip se convierte a la moneda de tu cuenta con el tipo de cambio diario del BCE, así que puede diferir unos céntimos del de tu broker. Comprueba siempre el tamaño final en MetaTrader.</p>
   </section>
 
+  <!-- SEÑALES -->
+  <section class="view" id="v-senales" hidden>
+    <div class="panel">
+      <h2><span>Marcador de señales</span>
+        <span class="seg" role="group" aria-label="Periodo" id="sn-per" style="text-transform:none;letter-spacing:0;font-weight:400"><button type="button" data-v="1" aria-pressed="true">Hoy</button><button type="button" data-v="7" aria-pressed="false">7 días</button><button type="button" data-v="45" aria-pressed="false">Todo</button></span>
+      </h2>
+      <div class="result" id="sn-kpis" style="margin-top:0"></div>
+      <p class="foot" style="margin:10px 0 0">Solo se avisan los mercados con una estrategia que ganó en 2 años de datos (abajo). Se actualiza cada 5 minutos, L-V de 8:00 a 22:00. Una señal se cierra al tocar el objetivo o el stop, o al pasar su tiempo máximo. Spread incluido.</p>
+    </div>
+    <div class="panel">
+      <h2>Avisos y resultado</h2>
+      <div class="table-wrap"><table id="sn-table"></table></div>
+    </div>
+    <div class="panel">
+      <h2><span>Mejores mercados para operar</span><span id="bt-meta" class="muted" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div class="table-wrap"><table id="bt-table"></table></div>
+      <p class="foot" style="margin:10px 0 0">5 estrategias clásicas probadas en unos 2 años de velas de 1 h por mercado, con spread incluido. Se eligen con los primeros 2/3 del histórico y se comprueban con el último 1/3, que no se usó para elegir (columnas de la prueba). 1 R = lo que arriesgas por operación. Solo se avisan los mercados que ganan en las dos partes. XAUUSD y XAUEUR se mueven casi igual: cuenta una operación en cada uno como el doble de riesgo. El pasado no garantiza el futuro.</p>
+    </div>
+  </section>
+
   <!-- DIARIO -->
   <section class="view" id="v-diario" hidden>
     <div class="result" id="stats" style="margin-top:0"></div>
@@ -260,6 +281,7 @@ canvas{width:100%;height:220px;display:block}
   <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
   <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
   <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+  <button class="tab" role="tab" data-view="senales" aria-selected="false">Señales</button>
   <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
 </nav>
 
@@ -281,7 +303,8 @@ const ASSETS = [
   {id:"EURGBP", tv:"FX:EURGBP",    pip:0.0001, unit:100000, quote:"GBP"},
   {id:"EURJPY", tv:"FX:EURJPY",    pip:0.01,   unit:100000, quote:"JPY"},
   {id:"GBPJPY", tv:"FX:GBPJPY",    pip:0.01,   unit:100000, quote:"JPY"},
-  {id:"XAUUSD", tv:"OANDA:XAUUSD", pip:0.1,    unit:100,    quote:"USD", label:"Oro (XAUUSD)"},
+  {id:"XAUUSD", tv:"OANDA:XAUUSD", pip:0.1,    unit:100,    quote:"USD", label:"Oro en dólares (XAUUSD)"},
+  {id:"XAUEUR", tv:"OANDA:XAUEUR", pip:0.1,    unit:100,    quote:"EUR", label:"Oro en euros (XAUEUR)"},
   {id:"BTCUSDT", tv:"BINANCE:BTCUSDT", pip:1,  unit:1, quote:"USD", crypto:true, label:"Bitcoin (BTCUSDT)"},
   {id:"ETHUSDT", tv:"BINANCE:ETHUSDT", pip:0.1, unit:1, quote:"USD", crypto:true, label:"Ethereum (ETHUSDT)"},
   {id:"SOLUSDT", tv:"BINANCE:SOLUSDT", pip:0.01, unit:1, quote:"USD", crypto:true, label:"Solana (SOLUSDT)"},
@@ -332,7 +355,7 @@ function tvWidget(el, file, config){
 }
 const tvSym = id => byId[id].tv;
 function loadMercado(){
-  tvWidget($("#tape"),"embed-widget-ticker-tape.js",{symbols:["AUDCAD","NZDCAD","EURUSD","GBPUSD","USDJPY","XAUUSD","BTCUSDT","ETHUSDT"].map(id=>({proName:tvSym(id), title:id})).concat([{proName:"TVC:DXY",title:"DXY"}]), displayMode:"adaptive", showSymbolLogo:true, isTransparent:false});
+  tvWidget($("#tape"),"embed-widget-ticker-tape.js",{symbols:["XAUUSD","XAUEUR","AUDCAD","NZDCAD","EURUSD","GBPUSD","USDJPY","BTCUSDT","ETHUSDT"].map(id=>({proName:tvSym(id), title:id})).concat([{proName:"TVC:DXY",title:"DXY"}]), displayMode:"adaptive", showSymbolLogo:true, isTransparent:false});
   tvWidget($("#fxmatrix"),"embed-widget-forex-cross-rates.js",{width:"100%",height:"100%",currencies:["EUR","USD","JPY","GBP","CHF","AUD","CAD","NZD"]});
   tvWidget($("#calendar"),"embed-widget-events.js",{width:"100%",height:"100%",importanceFilter:"0,1",countryFilter:"us,eu,gb,jp,au,nz,ca,ch,cn"});
   startCrypto();
@@ -362,11 +385,12 @@ const VIVO = {
   USDJPY: {legs:[["USDJPY","USD/JPY"]]},
   AUDUSD: {legs:[["AUDUSD","AUD/USD"]]},
   XAUUSD: {legs:[["PAXGUSD","PAXG/USD"]], nota:"Oro vía PAXG (token respaldado por oro): puede diferir unos dólares del XAUUSD de tu broker."},
+  XAUEUR: {legs:[["PAXGEUR","PAXG/EUR"]], nota:"Oro en euros vía PAXG/EUR: puede diferir unos euros del XAUEUR de tu broker."},
   BTCUSDT:{legs:[["XBTUSD","BTC/USD"]]},
   ETHUSDT:{legs:[["ETHUSD","ETH/USD"]]},
 };
 const SIG_ASSETS = Object.keys(VIVO);
-const DEC = {AUDCAD:5, NZDCAD:5, EURUSD:5, GBPUSD:5, USDJPY:3, AUDUSD:5, XAUUSD:2, BTCUSDT:1, ETHUSDT:2};
+const DEC = {AUDCAD:5, NZDCAD:5, EURUSD:5, GBPUSD:5, USDJPY:3, AUDUSD:5, XAUUSD:2, XAUEUR:2, BTCUSDT:1, ETHUSDT:2};
 let lw=null, lwSeries=null, lwLines=[], sigTf=15, sigMode="ambas", marcado=false;
 let st = null;          // estado del activo mostrado: velas por temporalidad, análisis, último precio
 let ws = null, wsLegs = [], lastLeg = {}, analTimer = null, datosEsc = null;
@@ -599,6 +623,69 @@ function tickPrecio(price){
   if(r15.nuevo) recalcular(); else pintarEstado();
 }
 
+// ---------- Señales: marcador en directo y backtest ----------
+let snPer = 1, snDatos = null, btDatos = null;
+async function cargarRama(nombre){
+  if(location.hostname!=="localhost"){
+    try{ const r = await fetch(`https://api.github.com/repos/martivallfernandez-hash/mesa-trading/contents/${nombre}?ref=datos`, {headers:{Accept:"application/vnd.github.raw"}, cache:"no-store"});
+      if(r.ok) return await r.json(); }catch{}
+    return fetch(`https://raw.githubusercontent.com/martivallfernandez-hash/mesa-trading/datos/${nombre}?t=${Date.now()}`,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  }
+  return fetch(nombre+"?t="+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null);
+}
+async function loadSenalesTab(){
+  $("#sn-per").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
+    $("#sn-per").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); snPer=+b.dataset.v; pintarSenales(); });
+  const [s, bt] = await Promise.all([cargarRama("senales.json"), fetch("escaner/estrategias.json?t="+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null)]);
+  snDatos = s || []; btDatos = bt; pintarSenales(); pintarBacktest();
+  setInterval(async ()=>{ if(!$("#v-senales").hidden){ snDatos = (await cargarRama("senales.json")) || snDatos; pintarSenales(); } }, 60000);
+}
+function inicioDiaMadrid(){
+  const p = new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Madrid",hour:"numeric",minute:"numeric",second:"numeric",hourCycle:"h23"}).formatToParts(new Date());
+  const g = t => +p.find(x=>x.type===t).value;
+  return Math.floor(Date.now()/1000) - (g("hour")*3600 + g("minute")*60 + g("second"));
+}
+function pintarSenales(){
+  const desde = snPer===1 ? inicioDiaMadrid() : Date.now()/1000 - snPer*86400;
+  const lista = (snDatos||[]).filter(x=>x.ts + 900 >= desde).sort((a,b)=>b.ts-a.ts);
+  const cerradas = lista.filter(x=>x.estado!=="abierta"), gan = cerradas.filter(x=>x.R>0);
+  const R = cerradas.reduce((a,x)=>a+x.R,0);
+  const pct = arr=>{ const c=arr.filter(x=>x.estado!=="abierta"); return c.length? Math.round(c.filter(x=>x.R>0).length/c.length*100)+" %" : "—"; };
+  $("#sn-kpis").innerHTML = [
+    ["big","Acierto", cerradas.length? Math.round(gan.length/cerradas.length*100)+" %" : "—", ""],
+    ["","Resultado", cerradas.length? (R>=0?"+":"")+fmt(R,1)+" R" : "—", R>=0?"up":"down"],
+    ["","Avisos", lista.length, ""],
+    ["","Cerrados / en curso", cerradas.length+" / "+(lista.length-cerradas.length), ""],
+    ["","Mercados vigilados", btDatos ? (btDatos.ranking||[]).join(" · ") || "—" : "—", ""],
+  ].map(([cl,k,v,col])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}">${v}</div></div>`).join("");
+  const t = $("#sn-table");
+  if(!lista.length){ t.innerHTML = `<tr><td class="empty">Todavía no hay avisos registrados en este periodo.</td></tr>`; return; }
+  const est = x => x.estado==="objetivo" ? `<span class="up">✅ Objetivo</span>` : x.estado==="stop" ? `<span class="down">❌ Stop</span>` : x.estado==="tiempo" ? `<span class="muted">⏱ Tiempo</span>` : `<span class="pill">En curso${x.R_actual!=null?" "+(x.R_actual>=0?"+":"")+fmt(x.R_actual,2)+" R":""}</span>`;
+  t.innerHTML = `<tr><th>Hora</th><th>Activo</th><th>Dir.</th><th>Estrategia</th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>Estado</th><th>R</th></tr>` +
+    lista.map(x=>{ const f=v=>(+v).toFixed(x.decimales||5); return `<tr>
+      <td class="num">${new Date(x.ts*1000).toLocaleString("es-ES",{timeZone:"Europe/Madrid",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</td>
+      <td>${x.activo}</td><td><span class="pill ${x.direccion==="compra"?"buy":"sell"}">${x.direccion}</span></td>
+      <td>${x.estrategia||"—"}</td>
+      <td class="num">${f(x.entrada)}</td><td class="num">${f(x.stop)}</td><td class="num">${f(x.objetivo)}</td>
+      <td>${est(x)}</td><td class="num ${x.R>0?"up":x.R<0?"down":""}">${x.R==null?"—":(x.R>=0?"+":"")+fmt(x.R,2)}</td></tr>`; }).join("");
+}
+function pintarBacktest(){
+  const t = $("#bt-table");
+  if(!btDatos){ t.innerHTML = `<tr><td class="empty">Sin datos del laboratorio todavía.</td></tr>`; return; }
+  $("#bt-meta").textContent = "actualizado el " + new Date(btDatos.generado*1000).toLocaleDateString("es-ES");
+  const filas = Object.entries(btDatos.mercados).map(([m,d])=>{
+    const k = d.elegida || Object.entries(d.estrategias).sort((a,b)=>b[1].prueba.R_medio-a[1].prueba.R_medio)[0][0];
+    return {m, d, k, f:d.estrategias[k]};
+  }).sort((a,b)=>(!!b.d.elegida - !!a.d.elegida) || (b.f.prueba.R_medio - a.f.prueba.R_medio));
+  t.innerHTML = `<tr><th>#</th><th>Mercado</th><th>Mejor estrategia</th><th>Operaciones (prueba)</th><th>Acierto</th><th>R medio</th><th>Factor</th><th>Al mes</th><th>Avisos</th></tr>` +
+    filas.map(({m,d,f},i)=>{ const p=f.prueba; return `<tr>
+      <td class="num">${d.elegida? i+1 : "—"}</td><td><b>${m}</b></td><td>${f.nombre}</td>
+      <td class="num">${p.n}</td><td class="num">${p.acierto} %</td>
+      <td class="num ${p.R_medio>0?"up":"down"}">${(p.R_medio>=0?"+":"")+fmt(p.R_medio,2)}</td>
+      <td class="num">${p.factor??"—"}</td><td class="num">${p.por_mes}</td>
+      <td>${d.elegida?'<span class="up">✅ Activo</span>':'<span class="muted">Sin ventaja</span>'}</td></tr>`; }).join("");
+}
+
 // ---------- Cripto en vivo (Binance) ----------
 const CRYPTO = ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"];
 const live = {};
@@ -819,7 +906,7 @@ function summaryText(){
   return lines.join("\n");
 }
 
-const LOADERS = {mercado:loadMercado, grafico:loadGrafico, riesgo:loadRiesgo, diario:()=>{ loadDiario(); }};
+const LOADERS = {mercado:loadMercado, grafico:loadGrafico, riesgo:loadRiesgo, senales:loadSenalesTab, diario:()=>{ loadDiario(); }};
 show(store.get("view","mercado"));
 </script>
 </body>

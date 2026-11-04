@@ -279,6 +279,75 @@ def log(msg):
         pass
 
 
+def calibracion():
+    """Lee calibracion.json (sale del backtest). Si no existe, no filtra nada."""
+    try:
+        with open(os.path.join(CARPETA, "calibracion.json"), encoding="utf-8") as f:
+            return json.load(f)["activos"]
+    except (OSError, ValueError, KeyError):
+        return {}
+
+
+def estrategia():
+    """Reglas elegidas por el optimizador (estrategia.json). Si no existe, no filtra nada."""
+    try:
+        with open(os.path.join(CARPETA, "estrategia.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def aplicar_estrategia(a):
+    """Devuelve la señal ajustada a las reglas ganadoras, o None si no las cumple."""
+    e, s = estrategia(), a["senal"]
+    if not e or not s:
+        return s
+    r = e["reglas"]
+    act = e["activos"].get(a["activo"])
+    if act is not None and not act.get("activo"):
+        return None
+    compra = s["direccion"] == "compra"
+    t1h = a["tendencia_1h"]
+    a_favor = (compra and t1h == "alcista") or (not compra and t1h == "bajista")
+    contra = (compra and t1h == "bajista") or (not compra and t1h == "alcista")
+    if r["tendencia"] == "a_favor" and not a_favor:
+        return None
+    if r["tendencia"] == "no_contra" and contra:
+        return None
+    if r["tipo"] == "estrictas" and "flexible" in s["motivo"]:
+        return None
+    if s["puntos"] < r["min_puntos"]:
+        return None
+    h0, h1 = map(int, r["horas"].split("-"))
+    if not h0 <= dt.datetime.fromtimestamp(s["ts"], dt.timezone.utc).astimezone(MADRID).hour < h1:
+        return None
+    if r["alineado_15m"] and not (a["tendencia_15m"] == t1h and t1h != "lateral"):
+        return None
+    if r["salida"] != "zona":
+        m = float(r["salida"].rstrip("R"))
+        riesgo = abs(s["entrada"] - s["stop"])
+        s = dict(s, objetivo=s["entrada"] + (m if compra else -m) * riesgo, rr=m)
+    return s
+
+
+def historico(activo, puntos):
+    """Texto con lo que habría hecho este tipo de señal en el backtest."""
+    e = estrategia()
+    if e:
+        p = e["activos"].get(activo, {}).get("todo") or {}
+        if p.get("n", 0) >= 8:
+            return f"Histórico de esta estrategia en {activo}: {p['n']} señales, {p['acierto']}% de acierto, {p['R_medio']:+.2f} R de media (backtest {e.get('dias', 60)} días)."
+        return ""
+    c = calibracion().get(activo)
+    if not c:
+        return ""
+    for umbral in (85, 70, 55):
+        r = c.get(f"desde_{umbral}")
+        if puntos >= umbral and r and r.get("n", 0) >= 10:
+            return f"Histórico ({r['n']} señales de {umbral}+ pts): {r['acierto']}% de acierto, {r['R_medio']:+.2f} R de media."
+    return ""
+
+
 def tema_ntfy():
     """El tema sale de la variable NTFY_TEMA (GitHub) o de config.json (PC)."""
     if os.environ.get("NTFY_TEMA"):
@@ -305,7 +374,8 @@ def avisar(a):
     titulo = f"{a['activo']} · {s['direccion'].upper()} · {s['puntos']}/100" + (f" · {DEBIL}" if debil else "")
     cuerpo = (("Señal débil: poca relevancia. Úsala para observar o practicar, no como entrada principal.\n" if debil else "") +
               f"Entrada {d(s['entrada'])} · Stop {d(s['stop'])} · Objetivo {d(s['objetivo'])} · R:B 1:{s['rr']}\n"
-              f"{s['motivo'].capitalize()} (vela de las {s['vela']}). Tendencia 1 h: {a['tendencia_1h']}.\n"
+              f"{s['motivo'].capitalize()} (vela de las {s['vela']}). Tendencia 1 h: {a['tendencia_1h']}.\n" +
+              (historico(a["activo"], s["puntos"]) + "\n" if historico(a["activo"], s["puntos"]) else "") +
               "Compruébalo en tu gráfico antes de entrar. Educativo, cuenta demo.")
     req = urllib.request.Request(f"https://ntfy.sh/{tema}", data=cuerpo.encode("utf-8"), headers={
         "Title": titulo.encode("utf-8"), "Tags": "chart_with_upwards_trend" if s["direccion"] == "compra" else "chart_with_downwards_trend",
@@ -321,7 +391,7 @@ def en_horario(ahora=None):
 
 def escanea(todas=False, como_json=False, enviar=False):
     if enviar and not en_horario():
-        return
+        return []
     try:
         with open(ESTADO, encoding="utf-8") as f:
             enviadas = json.load(f)
@@ -339,6 +409,15 @@ def escanea(todas=False, como_json=False, enviar=False):
         s = a["senal"]
         if not s or s["puntos"] < UMBRAL_DEBIL:
             continue
+        if estrategia():
+            s = aplicar_estrategia(a)
+            if not s:
+                continue  # no cumple las reglas que ganaron en el backtest
+            a["senal"] = s
+        else:
+            cal = calibracion().get(activo)
+            if cal is not None and (not cal.get("activo") or s["puntos"] < (cal.get("min_puntos") or 0)):
+                continue  # el backtest dice que este activo o esta puntuación no compensan
         fuerte = s["puntos"] >= UMBRAL
         # Una señal débil no se repite si ya se avisó cualquier cosa de ese activo y dirección;
         # una fuerte solo se bloquea si ya se avisó otra fuerte (puede «mejorar» una débil).
@@ -364,7 +443,7 @@ def escanea(todas=False, como_json=False, enviar=False):
             except Exception as e:
                 log(f"ERROR al avisar {a['activo']}: {e}")
         log(f"escaneo hecho: {len(nuevas)} señales nuevas" + (f", errores: {'; '.join(errores)}" if errores else ""))
-        return
+        return nuevas
     if como_json:
         sin_velas = [{k: v for k, v in a.items() if not k.startswith("velas")} for a in nuevas]
         print(json.dumps({"senales": sin_velas, "errores": errores}, default=str, ensure_ascii=False))
@@ -394,6 +473,7 @@ def exporta(ruta):
     with open(ruta, "w", encoding="utf-8") as f:
         json.dump(salida, f, default=str, ensure_ascii=False, separators=(",", ":"))
     log(f"exportado {ruta}: {len(salida['activos'])} activos")
+    return salida
 
 
 if __name__ == "__main__":
