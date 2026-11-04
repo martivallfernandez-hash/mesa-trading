@@ -5,7 +5,7 @@ name: Escáner de señales
 # por la mañana o recuperarla si se corta: si ya hay una vigilando, la nueva espera su turno.
 on:
   schedule:
-    - cron: "4,34 6-20 * * 1-5"
+    - cron: "4,19,34,49 4-20 * * 1-5"
   workflow_dispatch:
   push:
     branches: [main]
