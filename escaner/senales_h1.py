@@ -150,6 +150,17 @@ def avisar(s):
     urllib.request.urlopen(req, timeout=20).close()
 
 
+def ya_avisado(m, direccion, horas=6):
+    """¿Ya se avisó de este mercado y dirección en las últimas horas (p. ej. desde el puente de MetaTrader del PC)?"""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f"https://ntfy.sh/{escaner.tema_ntfy()}/json?poll=1&since={horas}h",
+                                                           headers={"User-Agent": "Mozilla/5.0"}), timeout=20) as r:
+            titulos = [json.loads(x).get("title", "") for x in r.read().decode("utf-8").splitlines() if x.strip()]
+        return any(t.startswith(f"{m} · {direccion.upper()} ·") for t in titulos)
+    except Exception:
+        return False
+
+
 def escanea(ya_avisadas_ids, mercados_abiertos=()):
     """Revisa todos los mercados con estrategia; avisa de las señales nuevas. Devuelve la lista de nuevas."""
     cfg = config()
@@ -168,7 +179,9 @@ def escanea(ya_avisadas_ids, mercados_abiertos=()):
         if sid in ya_avisadas_ids:
             continue
         s["id"] = sid
-        if escaner.en_horario():
+        if escaner.en_horario() and ya_avisado(m, s["direccion"]):
+            escaner.log(f"H1 {m} {s['direccion']}: ya avisado desde tu MetaTrader; solo se registra")
+        elif escaner.en_horario():
             try:
                 avisar(s)
                 escaner.log(f"AVISO H1 {m} {s['direccion']} {s['nombre']} entrada {s['entrada']}")
