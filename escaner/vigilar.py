@@ -20,6 +20,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escaner  # noqa: E402
 import senales_h1  # noqa: E402
+import estado_mercado  # noqa: E402
 
 DURACION = 5 * 3600 + 20 * 60   # deja margen antes del límite de 6 h de GitHub
 INTERVALO = 300                  # 5 minutos
@@ -34,22 +35,24 @@ SPREAD = {"AUDCAD": 0.0002, "NZDCAD": 0.00025, "EURUSD": 0.00008, "GBPUSD": 0.00
           "AUDUSD": 0.0001, "XAUUSD": 0.30, "XAUEUR": 0.35, "BTCUSDT": 15.0, "ETHUSDT": 1.2}
 MAX_HORAS = 12
 senales = None   # historial de avisos con su resultado (se guarda en la rama «datos» como senales.json)
+estado = None    # qué mensajes de estado se han enviado ya (estado.json en la rama «datos»)
 
 
-def cargar_senales():
-    """Recupera el historial de la rama «datos» (cada ejecución empieza en una máquina nueva)."""
+def cargar_senales(nombre="senales.json", vacio=None):
+    """Recupera un archivo de la rama «datos» (cada ejecución empieza en una máquina nueva)."""
+    vacio = [] if vacio is None else vacio
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not repo:
-        return []
+        return vacio
     try:
         with urllib.request.urlopen(urllib.request.Request(
-                f"https://api.github.com/repos/{repo}/contents/senales.json?ref=datos",
+                f"https://api.github.com/repos/{repo}/contents/{nombre}?ref=datos",
                 headers={"Accept": "application/vnd.github.raw", "User-Agent": "escaner-mesa",
                          "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN', '')}"}), timeout=20) as r:
             return json.load(r)
     except Exception as e:
-        print("Sin historial previo de señales:", e)
-        return []
+        print(f"Sin {nombre} previo:", e)
+        return vacio
 
 
 def registrar(nuevas):
@@ -106,11 +109,19 @@ def publicar_datos(nuevas):
         datos = escaner.exporta(os.path.join(d, "datos.json"))
         registrar(nuevas)
         evaluar(datos)
+        try:
+            enviados = estado_mercado.revisar(senales, estado)
+            if enviados:
+                print("Mensajes de estado:", enviados, flush=True)
+        except Exception as e:
+            print("Error en los mensajes de estado:", e)
         with open(os.path.join(d, "senales.json"), "w", encoding="utf-8") as f:
             json.dump(senales, f, ensure_ascii=False, separators=(",", ":"))
+        with open(os.path.join(d, "estado.json"), "w", encoding="utf-8") as f:
+            json.dump(estado, f, ensure_ascii=False)
         git = lambda *a: subprocess.run(["git", "-C", d, *a], check=True, capture_output=True)
         git("init", "-q", "-b", "datos")
-        git("add", "datos.json", "senales.json")
+        git("add", "datos.json", "senales.json", "estado.json")
         git("-c", "user.name=escaner", "-c", "user.email=escaner@users.noreply.github.com", "commit", "-q", "-m", "Datos del escáner")
         git("push", "-q", "-f", f"https://x-access-token:{token}@github.com/{repo}.git", "datos")
 
@@ -125,9 +136,10 @@ def esperar_apertura():
 
 
 def vigilar():
-    global senales
+    global senales, estado
     esperar_apertura()
     senales = cargar_senales()
+    estado = cargar_senales("estado.json", {})
     fin = time.time() + DURACION
     vueltas = 0
     while time.time() < fin and escaner.en_horario():
