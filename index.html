@@ -47,9 +47,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* Navegación inferior (móvil) */
 .bottom{position:fixed;inset:auto 0 0 0;z-index:20;background:var(--panel);border-top:1px solid var(--line);
-  display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+  display:grid;grid-template-columns:repeat(6,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (min-width:900px){.bottom{display:none}}
-.bottom .tab{padding:14px 4px;border-radius:0;font-size:13px}
+.bottom .tab{padding:14px 2px;border-radius:0;font-size:12px}
 .bottom .tab[aria-selected="true"]{background:none;color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
 
 main{padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1400px;margin:0 auto}
@@ -121,6 +121,7 @@ canvas{width:100%;height:220px;display:block}
     <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
     <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
     <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+    <button class="tab" role="tab" data-view="lotes" aria-selected="false">Lotes</button>
     <button class="tab" role="tab" data-view="senales" aria-selected="false">Señales</button>
     <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
   </nav>
@@ -213,6 +214,24 @@ canvas{width:100%;height:220px;display:block}
     <p class="foot">Lotes estándar de 100.000 unidades (oro: 100 onzas; cripto: unidades de la moneda). El valor del pip se convierte a la moneda de tu cuenta con el tipo de cambio diario del BCE, así que puede diferir unos céntimos del de tu broker. Comprueba siempre el tamaño final en MetaTrader.</p>
   </section>
 
+  <!-- LOTES -->
+  <section class="view" id="v-lotes" hidden>
+    <div class="panel">
+      <h2>Lotes para cada mercado</h2>
+      <div class="form">
+        <label>Capital<input id="lt-cap" class="num" type="number" step="100" value="10000" inputmode="decimal"></label>
+        <label>Riesgo por operación (%)<input id="lt-pct" class="num" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>Moneda de la cuenta<select id="lt-ccy"><option>EUR</option><option>USD</option></select></label>
+      </div>
+      <div class="result" id="lt-kpi"></div>
+    </div>
+    <div class="panel">
+      <h2><span>Lotes según la distancia del stop</span><span class="muted" id="lt-meta" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div class="table-wrap"><table id="lt-table"></table></div>
+      <p class="foot" style="margin:10px 0 0">Lotes redondeados hacia abajo a 0,01 (lo mínimo de MetaTrader): nunca pierdes más del riesgo elegido si el precio toca el stop. 1 lote = 100.000 unidades en divisas y 100 onzas en el oro. En divisas el stop va en pips; en el oro, en dólares o euros de movimiento del precio. «Stop de hoy» es el que usaría la estrategia ahora (oro: 3 ATR en XAUUSD y 2,5 ATR en XAUEUR; divisas: 1,5 ATR de 1 h como referencia). Tipo de cambio diario del BCE: puede diferir unos céntimos del de tu broker. Si sale «—», ni 0,01 lotes cabe en tu riesgo con ese stop: no operes.</p>
+    </div>
+  </section>
+
   <!-- SEÑALES -->
   <section class="view" id="v-senales" hidden>
     <div class="panel">
@@ -282,6 +301,7 @@ canvas{width:100%;height:220px;display:block}
   <button class="tab" role="tab" data-view="mercado" aria-selected="true">Mercado</button>
   <button class="tab" role="tab" data-view="grafico" aria-selected="false">Gráfico</button>
   <button class="tab" role="tab" data-view="riesgo" aria-selected="false">Riesgo</button>
+  <button class="tab" role="tab" data-view="lotes" aria-selected="false">Lotes</button>
   <button class="tab" role="tab" data-view="senales" aria-selected="false">Señales</button>
   <button class="tab" role="tab" data-view="diario" aria-selected="false">Diario</button>
 </nav>
@@ -642,6 +662,50 @@ function tickPrecio(price){
   if(r15.nuevo) recalcular(); else pintarEstado();
 }
 
+// ---------- Lotes por mercado ----------
+const LT_MERCADOS = ["XAUUSD","XAUEUR","EURUSD","GBPUSD","USDJPY","AUDUSD","AUDCAD","NZDCAD"];
+const LT_STOPS_FX = [10, 20, 30, 50];       // pips
+const LT_STOPS_ORO = [5, 10, 20, 40];       // $ o € de movimiento
+const LT_MULT = {XAUUSD:3, XAUEUR:2.5};     // stop de la estrategia en ATR; divisas 1,5 ATR de referencia
+let ltAtr = {};
+async function loadLotes(){
+  try{ const g = store.get("lotes", null); if(g){ $("#lt-cap").value=g.cap; $("#lt-pct").value=g.pct; $("#lt-ccy").value=g.ccy; } }catch{}
+  ["#lt-cap","#lt-pct","#lt-ccy"].forEach(x=>$(x).addEventListener("input", pintarLotes));
+  pintarLotes();
+  // ATR de 1 h de cada mercado para el «stop de hoy»
+  await Promise.all(LT_MERCADOS.map(async m=>{ try{ const v = await historia(m, 60); if(v.length>30) ltAtr[m] = atrA(v.slice(-200)); }catch{} }));
+  pintarLotes();
+}
+async function pintarLotes(){
+  const cap = +$("#lt-cap").value || 0, pct = +$("#lt-pct").value || 0, ccy = $("#lt-ccy").value;
+  store.set("lotes", {cap, pct, ccy});
+  const riesgo = cap * pct / 100;
+  const maxRegla = PERDIDA_MAX * ((await rate("EUR", ccy)) || 1);
+  $("#lt-kpi").innerHTML = [
+    ["big", "Riesgo por operación", fmt(riesgo)+" "+ccy, ""],
+    ["", "Tu regla", "máx. "+PERDIDA_MAX+" €", riesgo > maxRegla ? "down" : "up"],
+  ].map(([cl,k,v,col])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}">${v}</div></div>`).join("") +
+  (riesgo > maxRegla ? `<div class="verdict bad" style="grid-column:1/-1">Con ${fmt(pct,1)} % de ${fmt(cap,0)} arriesgas ${fmt(riesgo)} ${ccy}, más que tus 150 € por operación.</div>` : "");
+  const lot = (dist, a, conv) => { if(!(dist>0) || !conv) return null; const l = Math.floor(riesgo / (dist * a.unit * conv) * 100) / 100; return l >= 0.01 ? l : 0; };
+  const celda = l => l===null ? "…" : l===0 ? '<span class="muted">—</span>' : `<b>${l.toFixed(2)}</b>`;
+  const filas = await Promise.all(LT_MERCADOS.map(async m=>{
+    const a = byId[m], conv = await rate(a.quote, ccy), oro = m.startsWith("XAU");
+    const stops = oro ? LT_STOPS_ORO : LT_STOPS_FX;
+    const dists = stops.map(x=> oro ? x : x * a.pip);
+    const atr = ltAtr[m], mult = LT_MULT[m] || 1.5;
+    const hoy = atr ? atr * mult : null;
+    const hoyTxt = hoy ? (oro ? fmt(hoy,1)+" "+(a.quote==="EUR"?"€":"$") : fmt(hoy/a.pip,0)+" pips") : "…";
+    const valorPip = conv ? (oro ? a.unit * 1 * conv : a.pip * a.unit * conv) : null;
+    const ventaja = m.startsWith("XAU");
+    return `<tr><td><b>${m}</b>${ventaja?' <span class="pill buy">con ventaja</span>':' <span class="pill">sin ventaja</span>'}</td>
+      <td class="num">${valorPip? fmt(valorPip)+" "+ccy+(oro?" / 1 "+(a.quote==="EUR"?"€":"$"):" / pip") : "…"}</td>
+      ${dists.map(d=>`<td class="num">${celda(lot(d, a, conv))}</td>`).join("")}
+      <td class="num">${hoyTxt}<br>${hoy ? celda(lot(hoy, a, conv)) : ""}</td></tr>`;
+  }));
+  $("#lt-table").innerHTML = `<tr><th>Mercado</th><th>Valor por lote</th>${LT_STOPS_FX.map(x=>`<th>Stop ${x} pips<br><span class="muted">oro: ${LT_STOPS_ORO[LT_STOPS_FX.indexOf(x)]} $/€</span></th>`).join("")}<th>Stop de hoy</th></tr>` + filas.join("");
+  $("#lt-meta").textContent = `riesgo ${fmt(riesgo)} ${ccy}`;
+}
+
 // ---------- Señales: marcador en directo y backtest ----------
 let snPer = 1, snDatos = null, btDatos = null;
 async function cargarRama(nombre){
@@ -935,7 +999,7 @@ function summaryText(){
   return lines.join("\n");
 }
 
-const LOADERS = {mercado:loadMercado, grafico:loadGrafico, riesgo:loadRiesgo, senales:loadSenalesTab, diario:()=>{ loadDiario(); }};
+const LOADERS = {mercado:loadMercado, grafico:loadGrafico, riesgo:loadRiesgo, lotes:loadLotes, senales:loadSenalesTab, diario:()=>{ loadDiario(); }};
 show(store.get("view","mercado"));
 </script>
 </body>
