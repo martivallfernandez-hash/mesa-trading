@@ -191,7 +191,7 @@ canvas{width:100%;height:220px;display:block}
       <div class="form">
         <label>Balance de la cuenta<input id="r-balance" class="num" type="number" step="0.01" inputmode="decimal"></label>
         <label>Moneda de la cuenta<select id="r-ccy"><option>USD</option><option>EUR</option><option>GBP</option></select></label>
-        <label>Riesgo por operación (%)<input id="r-risk" class="num" type="number" step="0.1" value="1" inputmode="decimal"></label>
+        <label>Pérdida máxima por operación (€)<input id="r-risk" class="num" type="number" step="1" value="150" inputmode="decimal"></label>
         <label>Activo<select id="r-pair"></select></label>
       </div>
       <div class="row" style="margin-top:12px">
@@ -663,6 +663,12 @@ function inicioDiaMadrid(){
   const g = t => +p.find(x=>x.type===t).value;
   return Math.floor(Date.now()/1000) - (g("hour")*3600 + g("minute")*60 + g("second"));
 }
+function duracionTxt(x){ // tiempo abierta y lo que tardaron las operaciones del backtest (no se inventa nada si no hay datos)
+  const e = btDatos && btDatos.mercados[x.activo] && btDatos.mercados[x.activo].estrategias[btDatos.mercados[x.activo].elegida];
+  const d = e && e.duracion, h = Math.max(0, Math.round((Date.now()/1000 - x.ts)/3600));
+  if(!d || d.n < 30) return ` <span class="muted">abierta hace ${h} h</span>`;
+  return ` <span class="muted">abierta hace ${h} h · en el backtest la mitad cerró antes de ${d.mediana} h de mercado (normal: ${d.p25}–${d.p75} h)</span>`;
+}
 function pintarSenales(){
   const desde = snPer===1 ? inicioDiaMadrid() : Date.now()/1000 - snPer*86400;
   const lista = (snDatos||[]).filter(x=>x.ts + 900 >= desde).sort((a,b)=>b.ts-a.ts);
@@ -678,7 +684,7 @@ function pintarSenales(){
   ].map(([cl,k,v,col])=>`<div class="kpi ${cl}"><div class="k">${k}</div><div class="v ${col}">${v}</div></div>`).join("");
   const t = $("#sn-table");
   if(!lista.length){ t.innerHTML = `<tr><td class="empty">Todavía no hay avisos registrados en este periodo.</td></tr>`; return; }
-  const est = x => x.estado==="objetivo" ? `<span class="up">✅ Objetivo</span>` : x.estado==="stop" ? `<span class="down">❌ Stop</span>` : x.estado==="tiempo" ? `<span class="muted">⏱ Tiempo</span>` : `<span class="pill">En curso${x.R_actual!=null?" "+(x.R_actual>=0?"+":"")+fmt(x.R_actual,2)+" R":""}</span>`;
+  const est = x => x.estado==="objetivo" ? `<span class="up">✅ Objetivo</span>` : x.estado==="stop" ? `<span class="down">❌ Stop</span>` : x.estado==="tiempo" ? `<span class="muted">⏱ Tiempo</span>` : `<span class="pill">En curso${x.R_actual!=null?" "+(x.R_actual>=0?"+":"")+fmt(x.R_actual,2)+" R":""}</span>${duracionTxt(x)}`;
   t.innerHTML = `<tr><th>Hora</th><th>Activo</th><th>Dir.</th><th>Estrategia</th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>Estado</th><th>R</th></tr>` +
     lista.map(x=>{ const f=v=>(+v).toFixed(x.decimales||5); return `<tr>
       <td class="num">${new Date(x.ts*1000).toLocaleString("es-ES",{timeZone:"Europe/Madrid",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</td>
@@ -742,7 +748,8 @@ async function rate(from, to){
 }
 
 // ---------- Calculadora de riesgo ----------
-const settings = Object.assign({initial:10000, ccy:"USD"}, store.get("settings",{}));
+const settings = Object.assign({initial:100000, ccy:"EUR"}, store.get("settings",{}));
+const PERDIDA_MAX = 150;   // € que el usuario no quiere superar por operación
 let dir = "buy";
 function loadRiesgo(){
   $("#r-pair").innerHTML = ASSETS.map(a=>`<option value="${a.id}">${a.label||a.id}</option>`).join("");
@@ -763,14 +770,16 @@ function loadRiesgo(){
 let lastCalc = null;
 async function calc(){
   const a = byId[$("#r-pair").value]; store.set("rpair", a.id);
-  const bal = +$("#r-balance").value, pct = +$("#r-risk").value, ccy = $("#r-ccy").value;
+  const bal = +$("#r-balance").value, maxEur = +$("#r-risk").value || PERDIDA_MAX, ccy = $("#r-ccy").value;
   const e = +$("#r-entry").value, sl = +$("#r-sl").value, tp = +$("#r-tp").value;
   const out = $("#r-out"), v = $("#r-verdict");
   lastCalc = null;
   if(!e || !sl){ out.innerHTML=""; v.className="verdict"; v.textContent="Rellena entrada y stop (y el objetivo, si lo tienes) para ver el cálculo."; return; }
   const wrongSide = dir==="buy" ? sl>=e : sl<=e;
   if(wrongSide){ out.innerHTML=""; v.className="verdict bad"; v.textContent = dir==="buy" ? "En una compra el stop va por debajo de la entrada." : "En una venta el stop va por encima de la entrada."; return; }
-  const riskMoney = bal * pct/100;
+  const eurCcy = await rate("EUR", ccy);
+  const riskMoney = maxEur * (eurCcy || 1);          // los € máximos, en la moneda de la cuenta
+  const pct = bal ? riskMoney / bal * 100 : 0;
   const stopDist = Math.abs(e-sl), stopPips = stopDist / a.pip;
   const conv = await rate(a.quote, ccy);
   if(conv==null){ v.className="verdict warn"; v.textContent="No se ha podido obtener el tipo de cambio. Revisa la conexión."; return; }
@@ -794,7 +803,8 @@ async function calc(){
   let cls="ok", msg="Riesgo controlado y objetivo razonable.";
   if(lots<=0){ cls="bad"; msg="Con este stop y este riesgo no llega ni al lote mínimo (0,01). Acerca el stop solo si la estructura lo permite, o no operes."; }
   else if(tpWrong){ cls="bad"; msg="El objetivo está en el lado equivocado de la entrada."; }
-  else if(pct>2){ cls="bad"; msg=`Arriesgar un ${fmt(pct,1)} % por operación es mucho: con 5 pérdidas seguidas perderías más del ${fmt(pct*5,0)} %. Lo habitual es entre 0,5 y 1 %.`; }
+  else if(maxEur > PERDIDA_MAX){ cls="bad"; msg=`Has puesto ${fmt(maxEur,0)} € de pérdida máxima: tu regla es no perder más de ${PERDIDA_MAX} € por operación.`; }
+  else if(pct>2){ cls="bad"; msg=`${fmt(maxEur,0)} € son un ${fmt(pct,1)} % de tu cuenta: es mucho. Con 5 pérdidas seguidas perderías más del ${fmt(pct*5,0)} %.`; }
   else if(!tp){ cls="warn"; msg="Sin objetivo no puedes saber si la operación compensa. Define un take profit."; }
   else if(rr<1.5){ cls="warn"; msg=`La relación es 1:${fmt(rr,2)}. Por debajo de 1:1,5 necesitas acertar mucho para ganar a largo plazo; mejor esperar otra entrada.`; }
   else if(!a.crypto && stopPips<5){ cls="warn"; msg="Stop muy ajustado: el ruido normal del mercado (y el spread) pueden sacarte aunque tengas razón."; }

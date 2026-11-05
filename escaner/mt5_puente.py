@@ -29,7 +29,7 @@ import escaner             # noqa: E402
 
 TERMINAL = "C:/Program Files/MetaTrader 5/terminal64.exe"
 MERCADOS = ["XAUUSD", "XAUEUR"]
-RIESGO_PCT = 1.0
+PERDIDA_MAX_EUR = 150.0   # pérdida máxima por operación que fija el usuario
 LOG = os.path.join(os.path.expanduser("~"), ".claude", "trading", "mt5_puente.log")
 
 
@@ -91,7 +91,10 @@ def analizar(m, cfg):
     cuenta = mt5.account_info()
     tipo = mt5.ORDER_TYPE_BUY if compra else mt5.ORDER_TYPE_SELL
     perdida_lote = abs(mt5.order_calc_profit(tipo, m, 1.0, entrada, stop) or 0)   # en la moneda de la cuenta
-    riesgo = cuenta.balance * RIESGO_PCT / 100
+    riesgo = PERDIDA_MAX_EUR
+    if cuenta.currency != "EUR":   # pasar los 150 € a la moneda de la cuenta
+        t = mt5.symbol_info_tick("EUR" + cuenta.currency)
+        riesgo = PERDIDA_MAX_EUR * (t.bid if t and t.bid else 1.0)
     lotes = 0.0
     if perdida_lote > 0:
         paso = s.volume_step or 0.01
@@ -99,7 +102,8 @@ def analizar(m, cfg):
         lotes = min(lotes, s.volume_max)
     return {"activo": m, "nombre": est["nombre"], "direccion": direccion, "entrada": entrada, "stop": stop, "objetivo": objetivo,
             "rr": mult, "velas_max": vmax, "ts": cerradas[-1][0], "decimales": s.digits, "historico": est["prueba"],
-            "lotes": round(lotes, 2), "riesgo": round(riesgo, 2), "moneda": cuenta.currency, "spread": round(tick.ask - tick.bid, s.digits)}
+            "lotes": round(lotes, 2), "riesgo": round(riesgo, 2), "moneda": cuenta.currency, "spread": round(tick.ask - tick.bid, s.digits),
+            "perdida_min_lote": round(perdida_lote * (s.volume_min or 0.01), 2), "duracion": est.get("duracion")}
 
 
 def avisar(x):
@@ -108,9 +112,10 @@ def avisar(x):
     titulo = f"{x['activo']} · {x['direccion'].upper()} · {x['nombre']}"
     cuerpo = (f"Precios de TU MetaTrader (MetaQuotes-Demo):\n"
               f"Entrada {d(x['entrada'])} · Stop {d(x['stop'])} · Objetivo {d(x['objetivo'])} · R:B 1:{x['rr']:g}\n"
-              f"Lotes: {x['lotes']:.2f} (arriesgas {RIESGO_PCT:g}% = {x['riesgo']:,.2f} {x['moneda']}). Spread ahora: {d(x['spread'])}.\n".replace(",", "X").replace(".", ",").replace("X", ".")
+              + (f"Lotes: {x['lotes']:.2f} → si toca el stop pierdes como máximo {x['riesgo']:.0f} {x['moneda']}. Spread ahora: {d(x['spread'])}.\n"
+                 if x["lotes"] > 0 else f"⚠️ NO OPERAR: el lote mínimo perdería {x['perdida_min_lote']:.2f} {x['moneda']} en el stop, más de tu máximo.\n")
               + f"En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media ({h['n']} operaciones).\n"
-              f"Si no toca stop ni objetivo, cerrar en {x['velas_max']} h. Educativo, cuenta demo.")
+              + H.texto_duracion(x.get("duracion"), x["velas_max"]) + "Educativo, cuenta demo.")
     msg = {"topic": tema(), "title": titulo, "message": cuerpo, "priority": 4, "click": escaner.MESA,
            "tags": ["chart_with_upwards_trend" if x["direccion"] == "compra" else "chart_with_downwards_trend", "computer"]}
     urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/", data=json.dumps(msg).encode("utf-8"),

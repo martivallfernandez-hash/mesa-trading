@@ -1131,6 +1131,17 @@
       "variantes": 960,
       "ganan_prueba_pct": 96,
       "vecinos_ganan_pct": 100
+     },
+     "duracion": {
+      "n": 212,
+      "mediana": 36,
+      "p25": 20,
+      "p75": 79,
+      "p90": 120,
+      "objetivo_mediana": 55,
+      "stop_mediana": 22,
+      "por_tiempo_pct": 17,
+      "max_horas": 120
      }
     }
    },
@@ -1330,6 +1341,17 @@
       "variantes": 960,
       "ganan_prueba_pct": 70,
       "vecinos_ganan_pct": 100
+     },
+     "duracion": {
+      "n": 183,
+      "mediana": 33,
+      "p25": 15,
+      "p75": 72,
+      "p90": 120,
+      "objetivo_mediana": 49,
+      "stop_mediana": 18,
+      "por_tiempo_pct": 12,
+      "max_horas": 120
      }
     }
    },

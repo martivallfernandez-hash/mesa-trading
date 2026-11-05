@@ -15,7 +15,7 @@ import laboratorio  # noqa: E402
 
 UTC = dt.timezone.utc
 # Cuenta demo del usuario: los lotes del aviso se calculan con esto
-CUENTA = {"balance": 10000, "riesgo_pct": 1.0}
+CUENTA = {"perdida_max": 150.0, "moneda": "EUR"}   # pérdida máxima por operación que fija el usuario
 TAMANO_LOTE = {"XAUUSD": 100, "XAUEUR": 100}   # onzas por lote estándar en MetaTrader
 MONEDA = {"XAUUSD": "USD", "XAUEUR": "EUR"}
 
@@ -38,9 +38,9 @@ def lotes(s):
     tc = eurusd()
     perdida_usd = perdida_lote * (tc if MONEDA[m] == "EUR" else 1)
     perdida_eur = perdida_lote / (tc if MONEDA[m] == "USD" else 1)
-    riesgo = CUENTA["balance"] * CUENTA["riesgo_pct"] / 100
-    baja = lambda x: max(0.0, int(x * 100) / 100)
-    return {"usd": baja(riesgo / perdida_usd), "eur": baja(riesgo / perdida_eur), "riesgo": riesgo}
+    riesgo = CUENTA["perdida_max"]
+    lot = max(0.0, int(riesgo / perdida_eur * 100) / 100)
+    return {"lotes": lot, "riesgo": riesgo, "perdida_min_lote": round(perdida_eur * 0.01, 2)}
 DEC = {"EURUSD": 5, "GBPUSD": 5, "USDJPY": 3, "AUDUSD": 5, "AUDCAD": 5, "NZDCAD": 5, "XAUUSD": 2, "XAUEUR": 2, "BTCUSDT": 1, "ETHUSDT": 2}
 
 
@@ -124,7 +124,7 @@ def analizar(m, cfg=None):
     est = est_info
     return {"activo": m, "estrategia": clave, "nombre": nombre, "direccion": direccion, "entrada": precio, "stop": stop,
             "objetivo": objetivo, "rr": mult, "velas_max": vmax, "ts": cerradas[-1][0], "decimales": DEC.get(m, 5),
-            "historico": est["prueba"], "historico_todo": est["todo"]}
+            "historico": est["prueba"], "historico_todo": est["todo"], "duracion": est.get("duracion")}
 
 
 def calibracion_broker(m):
@@ -145,13 +145,26 @@ def calibracion_broker(m):
     return dict(c, horas=horas)
 
 
+def texto_duracion(dur, horas_max):
+    """Duración según el backtest (horas de mercado, sin fines de semana). Si no hay datos, no se dice nada."""
+    if not dur or dur.get("n", 0) < 30:
+        return ""
+    return (f"⏱ Duración en el backtest ({dur['n']} operaciones, horas de mercado): la mitad se cerró en menos de {dur['mediana']} h; "
+            f"lo normal, entre {dur['p25']} y {dur['p75']} h. Las que tocaron objetivo tardaron ~{dur['objetivo_mediana']} h y las que "
+            f"tocaron stop ~{dur['stop_mediana']} h. Si a las {horas_max} h sigue abierta, ciérrala.\n")
+
+
 def avisar(s):
     d = lambda x: f"{x:.{s['decimales']}f}"
     h = s["historico"]
     titulo = f"{s['activo']} · {s['direccion'].upper()} · {s['nombre']}"
     lt = lotes(s)
-    linea_lotes = (f"Lotes para arriesgar {CUENTA['riesgo_pct']:g}% de {CUENTA['balance']:,}".replace(",", ".") +
-                   f": {lt['usd']:.2f} si tu cuenta es en USD · {lt['eur']:.2f} si es en EUR.\n") if lt else ""
+    if lt and lt["lotes"] >= 0.01:
+        linea_lotes = f"Lotes: {lt['lotes']:.2f} → si toca el stop pierdes como máximo {lt['riesgo']:.0f} € (cuenta en EUR).\n"
+    elif lt:
+        linea_lotes = f"⚠️ NO OPERAR: incluso 0,01 lotes perdería {lt['perdida_min_lote']:.2f} € en el stop, más de tus {lt['riesgo']:.0f} €.\n"
+    else:
+        linea_lotes = ""
     dist_stop, dist_obj = abs(s["entrada"] - s["stop"]), abs(s["objetivo"] - s["entrada"])
     arriba, abajo = ("por encima", "por debajo") if s["direccion"] == "compra" else ("por debajo", "por encima")
     cal = calibracion_broker(s["activo"])
@@ -166,7 +179,7 @@ def avisar(s):
               f"• Stop {d(dist_stop)} {abajo} de tu entrada\n• Objetivo {d(dist_obj)} {arriba} de tu entrada (R:B 1:{s['rr']})\n"
               f"Niveles ({fuente}): entrada ~{d(niveles[0])}, stop {d(niveles[1])}, objetivo {d(niveles[2])}.\n" + linea_lotes +
               f"Estrategia validada en 2 años de datos. En el periodo de prueba: {h['acierto']}% de acierto, {h['R_medio']:+.2f} R de media por operación ({h['n']} operaciones).\n"
-              f"Si no toca stop ni objetivo, cerrar en {s['velas_max']} h. Compruébalo en tu gráfico. Educativo, cuenta demo.")
+              + texto_duracion(s.get("duracion"), s["velas_max"]) + "Compruébalo en tu gráfico. Educativo, cuenta demo.")
     # Publicación en JSON: así el título conserva acentos y símbolos (en una cabecera HTTP se estropean)
     mensaje = {"topic": escaner.tema_ntfy(), "title": titulo, "message": cuerpo, "priority": 4, "click": escaner.MESA,
                "tags": ["chart_with_upwards_trend" if s["direccion"] == "compra" else "chart_with_downwards_trend"]}
