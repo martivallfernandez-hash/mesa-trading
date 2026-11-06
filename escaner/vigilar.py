@@ -135,14 +135,24 @@ def esperar_apertura():
         time.sleep((apertura - m).total_seconds())
 
 
+def semana_activa():
+    """La cadena sigue viva (durmiendo de noche) de domingo 18:00 a viernes 22:00, hora de Madrid,
+    para no depender de que GitHub arranque a tiempo la programación de cada mañana."""
+    m = ahora().astimezone(escaner.MADRID)
+    return m.weekday() <= 3 or (m.weekday() == 4 and m.hour < 22) or (m.weekday() == 6 and m.hour >= 18)
+
+
 def vigilar():
     global senales, estado
-    esperar_apertura()
+    # (ya no hace falta esperar a las 8:00: el bucle duerme fuera de horario)
     senales = cargar_senales()
     estado = cargar_senales("estado.json", {})
     fin = time.time() + DURACION
     vueltas = 0
-    while time.time() < fin and escaner.en_horario():
+    while time.time() < fin and (escaner.en_horario() or semana_activa()):
+        if not escaner.en_horario():          # de noche: no escanea, solo mantiene viva la cadena
+            time.sleep(min(INTERVALO, max(1, fin - time.time())))
+            continue
         inicio = ahora().strftime("%H:%M:%S UTC")
         nuevas = []
         try:
@@ -164,8 +174,8 @@ def vigilar():
 
 def relevo():
     """Lanza la siguiente ejecución del workflow si seguimos en horario de mercado."""
-    if not escaner.en_horario():
-        print("Fuera de horario: no hace falta relevo. Mañana arrancará la programación de GitHub.")
+    if not (escaner.en_horario() or semana_activa()):
+        print("Fin de semana: sin relevo. La programación de GitHub la arranca el domingo por la tarde o el lunes.")
         return
     token, repo = os.environ["GITHUB_TOKEN"], os.environ["GITHUB_REPOSITORY"]
     req = urllib.request.Request(

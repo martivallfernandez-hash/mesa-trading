@@ -1,11 +1,13 @@
 name: Escáner de señales
 
 # Cada ejecución vigila el mercado cada 5 minutos durante unas 5 h (L-V de 8:00 a 22:00, hora de Madrid)
-# y al terminar lanza la siguiente. La programación de abajo solo sirve para arrancar la cadena
-# por la mañana o recuperarla si se corta: si ya hay una vigilando, la nueva espera su turno.
+# y al terminar lanza la siguiente; de domingo 18:00 a viernes 22:00 la cadena no se corta (de noche solo duerme).
+# La programación de abajo solo sirve para arrancarla el domingo o recuperarla si se corta:
+# si ya hay una vigilando, la nueva espera su turno.
 on:
   schedule:
     - cron: "4,19,34,49 4-20 * * 1-5"
+    - cron: "7,37 17-22 * * 0"
   workflow_dispatch:
   push:
     branches: [main]
