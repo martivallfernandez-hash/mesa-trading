@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escaner      # noqa: E402
 import laboratorio  # noqa: E402
 import senales_h1   # noqa: E402
+import resumen_dia  # noqa: E402
 
 CERCA_ATR = 0.3
 
@@ -77,7 +78,32 @@ def revisar(senales, estado, cfg=None):
     abiertas = {s["activo"] for s in senales if s["estado"] == "abierta"}
     enviados = []
 
-    # 1) Resumen de la mañana (una vez al día, L-V)
+    # 0) Resumen del día: ayer, probabilidades de hoy, agenda y horas de cautela (una vez al día, L-V)
+    if madrid.weekday() < 5 and madrid.hour >= 8 and estado.get("resumen_dia") != hoy and time.time() - estado.get("resumen_intento", 0) > 900:
+        estado["resumen_intento"] = time.time()
+        try:
+            titulo, texto, agenda_ok = resumen_dia.generar()
+            enviar(titulo, texto, 3, ("sunny",))
+            estado["resumen_dia"] = hoy
+            estado["resumen_texto"] = {"fecha": hoy, "titulo": titulo, "texto": texto}
+            if not agenda_ok:
+                estado["agenda_pendiente"] = hoy
+            enviados.append("resumen_dia")
+        except Exception as e:
+            print("Error en el resumen del día:", e)
+    if estado.get("agenda_pendiente") == hoy and madrid.hour < 15 and time.time() - estado.get("agenda_intento", 0) > 900:
+        estado["agenda_intento"] = time.time()
+        try:
+            titulo, texto = resumen_dia.mensaje_agenda(madrid.date())
+            enviar(titulo, texto, 3, ("newspaper",))
+            estado.pop("agenda_pendiente", None)
+            if estado.get("resumen_texto", {}).get("fecha") == hoy:
+                estado["resumen_texto"]["texto"] += "\n\n" + texto
+            enviados.append("agenda")
+        except Exception as e:
+            print("Agenda aún no disponible:", e)
+
+    # 1) Qué operar y qué no (una vez al día, L-V)
     if madrid.weekday() < 5 and madrid.hour >= 8 and estado.get("resumen") != hoy:
         lineas = [f"🛑 Divisas: NO OPERAR ({', '.join(sin_ventaja)}). Ninguna estrategia ha demostrado ganar en ellas tras 2 años de pruebas."]
         for m in activos:
@@ -87,7 +113,7 @@ def revisar(senales, estado, cfg=None):
             x = niveles(m, cfg)
             lineas.append(f"⏳ {m}: esperar. " + (texto_niveles(m, x) if x else "Sin datos ahora."))
         lineas.append(f"Recuerda: máximo 150 € de pérdida por operación.")
-        enviar("☀️ Resumen del día · qué operar y qué no", "\n".join(lineas), 3, ("sunny",))
+        enviar("🎯 Hoy · qué operar y qué no", "\n".join(lineas), 3, ("sunny",))
         estado["resumen"] = hoy
         enviados.append("resumen")
 

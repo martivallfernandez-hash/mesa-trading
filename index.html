@@ -235,6 +235,11 @@ canvas{width:100%;height:220px;display:block}
   <!-- SEÑALES -->
   <section class="view" id="v-senales" hidden>
     <div class="panel">
+      <h2><span>Resumen del día</span><span class="muted" id="rd-meta" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div id="rd-texto" style="white-space:pre-wrap;line-height:1.5;font-size:14px" class="muted">Cargando…</div>
+      <p class="foot" style="margin:10px 0 0">Llega cada mañana L-V a las 8:00 al móvil. Las probabilidades son la frecuencia con la que pasó en ~10 años de días parecidos (n = número de casos). Cerca de 50/100 = moneda al aire: no es una ventaja.</p>
+    </div>
+    <div class="panel">
       <h2><span>Marcador de señales</span>
         <span class="seg" role="group" aria-label="Periodo" id="sn-per" style="text-transform:none;letter-spacing:0;font-weight:400"><button type="button" data-v="1" aria-pressed="true">Hoy</button><button type="button" data-v="7" aria-pressed="false">7 días</button><button type="button" data-v="45" aria-pressed="false">Todo</button></span>
       </h2>
@@ -405,8 +410,8 @@ const VIVO = {
   GBPUSD: {legs:[["GBPUSD","GBP/USD"]]},
   USDJPY: {legs:[["USDJPY","USD/JPY"]]},
   AUDUSD: {legs:[["AUDUSD","AUD/USD"]]},
-  XAUUSD: {legs:[["PAXGUSD","PAXG/USD"]], nota:"Oro vía PAXG (token respaldado por oro): puede diferir unos dólares del XAUUSD de tu broker."},
-  XAUEUR: {legs:[["PAXGEUR","PAXG/EUR"]], nota:"Oro en euros vía PAXG/EUR: puede diferir unos euros del XAUEUR de tu broker."},
+  XAUUSD: {legs:[["PAXGUSDT"]], fuente:"binance", nota:"Oro vía PAXG/USDT de Binance (token respaldado por oro, muy líquido)."},
+  XAUEUR: {legs:[["PAXGUSDT"],["EURUSDT"]], fuente:"binance", nota:"Oro en euros = PAXG/USDT ÷ EUR/USDT de Binance."},
   BTCUSDT:{legs:[["XBTUSD","BTC/USD"]]},
   ETHUSDT:{legs:[["ETHUSD","ETH/USD"]]},
 };
@@ -433,6 +438,19 @@ async function krakenOHLC(pair, tf){
   const k = Object.values(r.result).find(Array.isArray);
   return k.map(c=>({time:+c[0], open:+c[1], high:+c[2], low:+c[3], close:+c[4]}));
 }
+async function binanceOHLC(sym, tf){
+  const iv = {5:"5m",15:"15m",30:"30m",60:"1h"}[tf];
+  const r = await fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=${iv}&limit=1000`).then(r=>r.json());
+  if(!Array.isArray(r)) throw new Error(r.msg||"Binance sin datos");
+  return r.map(c=>({time:Math.floor(c[0]/1000), open:+c[1], high:+c[2], low:+c[3], close:+c[4]}));
+}
+function dividir(a, b){ // vela sintética A÷B (oro en euros = oro en dólares ÷ EUR/USD)
+  const m = new Map(b.map(c=>[c.time,c])), out = [];
+  for(const x of a){ const y = m.get(x.time); if(!y) continue;
+    const o = x.open/y.open, c = x.close/y.close;
+    out.push({time:x.time, open:o, close:c, high:Math.max(o,c,x.high/y.close), low:Math.min(o,c,x.low/y.close)}); }
+  return out;
+}
 function combinar(a, b){ // vela sintética A×B alineada por tiempo
   const m = new Map(b.map(c=>[c.time,c])), out = [];
   let prevB = null;
@@ -441,17 +459,17 @@ function combinar(a, b){ // vela sintética A×B alineada por tiempo
     out.push({time:x.time, open:o, close:c, high:Math.max(o,c,x.high*y.close,x.close*y.high), low:Math.min(o,c,x.low*y.close,x.close*y.low)}); }
   return out;
 }
-let calib = null;   // diferencia broker - Kraken medida por el puente de MetaTrader del PC
+let calib = null;   // diferencia broker - fuente del gráfico (Binance/Kraken) medida por el puente de MetaTrader del PC
 async function cargarCalibracion(){
   if(calib) return calib;
   try{ const r = await fetch("https://api.github.com/repos/martivallfernandez-hash/mesa-trading/contents/calibracion.json?ref=calibracion", {headers:{Accept:"application/vnd.github.raw"}, cache:"no-store"});
     calib = r.ok ? await r.json() : {mercados:{}}; }catch{ calib = {mercados:{}}; }
   return calib;
 }
-function ajuste(id){
-  const c = calib && calib.mercados && calib.mercados[id];
-  if(!c || c.n < 3 || c.rango_kraken > 5 || Date.now()/1000 - c.actualizado > 72*3600) return null;
-  return c;
+function ajuste(id){ // {off, rango, actualizado}: lo que hay que sumar a la fuente del gráfico para ver el precio de tu broker
+  const c = calib && calib.mercados && calib.mercados[id], f = VIVO[id] && VIVO[id].fuente==="binance" ? "binance" : "kraken";
+  if(!c || c["n_"+f] < 3 || c[f]==null || c["rango_"+f] > 5 || Date.now()/1000 - (c["act_"+f]||c.actualizado) > 72*3600) return null;
+  return {off:c[f], rango:c["rango_"+f], actualizado:c["act_"+f]||c.actualizado};
 }
 async function historia(id, tf){
   const v = VIVO[id];
@@ -461,10 +479,11 @@ async function historia(id, tf){
     const k = {5:"velas5",15:"velas15",30:"velas30",60:"velas1h"}[tf];
     return (a[k]||[]).map(([t,o,h,l,c])=>({time:t, open:o, high:h, low:l, close:c}));
   }
-  const [series] = await Promise.all([Promise.all(v.legs.map(([p])=>krakenOHLC(p, tf))), cargarCalibracion()]);
-  const velas = limpiar(series.length===1 ? series[0] : combinar(series[0], series[1]));
+  const bin = v.fuente==="binance";
+  const [series] = await Promise.all([Promise.all(v.legs.map(([p])=>bin ? binanceOHLC(p, tf) : krakenOHLC(p, tf))), cargarCalibracion()]);
+  const velas = limpiar(series.length===1 ? series[0] : bin ? dividir(series[0], series[1]) : combinar(series[0], series[1]));
   const a = ajuste(id);
-  if(a) velas.forEach(c=>{ c.open+=a.kraken; c.high+=a.kraken; c.low+=a.kraken; c.close+=a.kraken; });
+  if(a) velas.forEach(c=>{ c.open+=a.off; c.high+=a.off; c.low+=a.off; c.close+=a.off; });
   return velas;
 }
 function limpiar(v){ // quita picos de operaciones sueltas: mechas mucho mayores que lo normal
@@ -624,24 +643,38 @@ function pintarEstado(){
   const enZona = marcado && st.anal && st.anal.planes.find(pl=>Math.abs(p-pl.entrada) <= 0.25*st.anal.atr);
   const aj = ajuste(st.id);
   $("#sig-age").innerHTML = (vivo ? `<span class="dot ${ws&&ws.readyState===1?"live":""}"></span> En vivo · ` : `Datos del escáner (cada 5 min) · `) +
-    (aj ? `<span title="Calibrado con tu MetaTrader hace ${Math.round((Date.now()/1000-aj.actualizado)/3600)} h">ajustado a tu broker ±${Math.max(aj.rango_kraken,0.5).toFixed(1)} · </span>` : "") +
+    (aj ? `<span title="Calibrado con tu MetaTrader hace ${Math.round((Date.now()/1000-aj.actualizado)/3600)} h">ajustado a tu broker ±${Math.max(aj.rango,0.5).toFixed(1)} · </span>` : (st.id.startsWith("XAU") ? `<span class="muted">sin calibrar con tu MetaTrader · </span>` : "")) +
     `<span class="num">${p.toFixed(dec)}</span>` + (enZona ? ` · <b class="${enZona.direccion==="compra"?"up":"down"}">el precio está en la zona de ${enZona.direccion}</b>` : "");
 }
 
 // ----- Tiempo real -----
 function conectar(id){
-  if(ws){ ws.onclose=null; ws.close(); ws=null; }
+  if(ws){ ws.onclose=null; ws.onmessage=null; ws.close(); ws=null; }
   clearInterval(analTimer);
   const v = VIVO[id];
   if(!v.legs){ analTimer = setInterval(async ()=>{ datosEsc=null; await abrir(id,true); }, 5*60*1000); return; }
-  wsLegs = v.legs.map(l=>l[1]); lastLeg = {};
+  lastLeg = {};
+  if(v.fuente==="binance"){ // libro de órdenes de Binance: mejor compra/venta al instante; se pinta como mucho 4 veces por segundo
+    const syms = v.legs.map(l=>l[0]); let ultimo = 0;
+    ws = new WebSocket("wss://data-stream.binance.vision/stream?streams="+syms.map(x=>x.toLowerCase()+"@bookTicker").join("/"));
+    ws.onopen = ()=>pintarEstado();
+    ws.onmessage = e=>{ const d = JSON.parse(e.data).data; if(!d || !d.s) return;
+      lastLeg[d.s] = (+d.b + +d.a)/2;
+      if(syms.some(x=>!lastLeg[x]) || Date.now()-ultimo < 250) return; ultimo = Date.now();
+      const a = ajuste(id), base = syms.length===2 ? lastLeg[syms[0]]/lastLeg[syms[1]] : lastLeg[syms[0]];
+      tickPrecio(base + (a ? a.off : 0)); };
+    ws.onclose = ()=>{ pintarEstado(); setTimeout(()=>{ if(st && st.id===id) conectar(id); }, 3000); };
+    analTimer = setInterval(()=>{ if(st && st.id===id){ recalcular(); } }, 60*1000);
+    return;
+  }
+  wsLegs = v.legs.map(l=>l[1]);
   ws = new WebSocket("wss://ws.kraken.com/v2");
   ws.onopen = ()=>{ ws.send(JSON.stringify({method:"subscribe", params:{channel:"ticker", symbol:wsLegs, event_trigger:"bbo"}})); pintarEstado(); };
   ws.onmessage = e=>{ const m = JSON.parse(e.data); if(m.channel!=="ticker" || !m.data) return;
     m.data.forEach(d=>{ lastLeg[d.symbol] = (+d.bid + +d.ask)/2 || +d.last; });
     if(wsLegs.some(s=>!lastLeg[s])) return;
     const a = ajuste(id);
-    tickPrecio(wsLegs.reduce((acc,s)=>acc*lastLeg[s],1) + (a ? a.kraken : 0));
+    tickPrecio(wsLegs.reduce((acc,s)=>acc*lastLeg[s],1) + (a ? a.off : 0));
   };
   ws.onclose = ()=>{ pintarEstado(); setTimeout(()=>{ if(st && st.id===id) conectar(id); }, 3000); };
   // Recalcula el análisis cada minuto por si ha cerrado una vela de 15 min
@@ -716,11 +749,18 @@ async function cargarRama(nombre){
   }
   return fetch(nombre+"?t="+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null);
 }
+async function pintarResumen(){
+  const e = await cargarRama("estado.json"), r = e && e.resumen_texto, el = $("#rd-texto");
+  if(!r){ el.textContent = "Aún no hay resumen. El primero llega el próximo día laborable a las 8:00."; return; }
+  const hoy = new Date().toLocaleDateString("sv-SE", {timeZone:"Europe/Madrid"});
+  $("#rd-meta").textContent = r.fecha===hoy ? "hoy" : "del " + r.fecha.split("-").reverse().join("/");
+  el.className = ""; el.textContent = r.titulo + "\n\n" + r.texto;
+}
 async function loadSenalesTab(){
   $("#sn-per").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     $("#sn-per").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b)); snPer=+b.dataset.v; pintarSenales(); });
   const [s, bt] = await Promise.all([cargarRama("senales.json"), fetch("escaner/estrategias.json?t="+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null)]);
-  snDatos = s || []; btDatos = bt; pintarSenales(); pintarBacktest();
+  snDatos = s || []; btDatos = bt; pintarSenales(); pintarBacktest(); pintarResumen();
   setInterval(async ()=>{ if(!$("#v-senales").hidden){ snDatos = (await cargarRama("senales.json")) || snDatos; pintarSenales(); } }, 60000);
 }
 function inicioDiaMadrid(){
