@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "registered_before_download": false,
+  "source": "Coinbase Exchange public candles",
+  "source_role": "Historical research only; not the deployed Kraken data source",
+  "symbols": [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD"
+  ],
+  "start_utc": "2026-05-09T00:00:00Z",
+  "end_utc_exclusive": "2026-11-01T00:00:00Z",
+  "interval_seconds": 900,
+  "split": {
+    "development": 0.6,
+    "validation": 0.2,
+    "sealed_holdout": 0.2
+  },
+  "candidates": [
+    "ema_cross",
+    "channel_breakout",
+    "trend_pullback"
+  ],
+  "risk": {
+    "initial_usd": 1000,
+    "risk_fraction": 0.001,
+    "max_exposure": 0.2,
+    "max_positions": 1,
+    "daily_loss_pause": 0.005,
+    "total_drawdown_pause": 0.02,
+    "stop_atr": 1.5,
+    "target_atr_multiple": 2,
+    "net_target_usd": 10.01,
+    "max_hold_bars": 96
+  },
+  "costs": {
+    "base": {
+      "fee_per_side": 0.004,
+      "slippage_per_side": 0.001
+    },
+    "stress": {
+      "fee_per_side": 0.006,
+      "slippage_per_side": 0.002
+    }
+  },
+  "selection_on_development_only": {
+    "min_closed_trades": 30,
+    "min_profit_factor": 1.1,
+    "net_profit_positive": true,
+    "max_drawdown_fraction": 0.02
+  },
+  "holdout_access": "Do not inspect the final 20 percent unless the development-selected candidate also passes validation and stress checks. Log every access. These 15-minute candidates differ from the deployed 5-minute strategy.",
+  "live_trading_enabled": false,
+  "registered_before_evaluation": true,
+  "amendment": {
+    "reason": "All three assets lack 25 consecutive 15-minute candles on 2026-05-08. No strategy results have been inspected. Use the complete interval beginning at the next UTC midnight after the gap.",
+    "initial_protocol_sha256": "b3aa82e77d1062299e9f204339b96a87cdb1fb43527d179449d8e6ef91c54513",
+    "performance_based_selection": false
+  }
+}

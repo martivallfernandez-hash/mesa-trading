@@ -8,3 +8,10 @@ Mesa de trading personal para practicar en cuenta demo:
 - **Diario**: registro de operaciones con estadísticas (acierto, factor de beneficio, esperanza, R, máxima caída) y curva de capital.
 
 Los datos del diario se guardan solo en el navegador. Herramienta de aprendizaje: no es asesoramiento financiero.
+
+## Laboratorio del bot
+
+La carpeta [`trading-lab/`](trading-lab/) incorpora el simulador con controles de
+riesgo, pruebas automáticas y un protocolo de comparación histórica con datos
+separados temporalmente. Su documentación distingue los resultados comprobados
+de lo pendiente. No habilita operativa con dinero real.
