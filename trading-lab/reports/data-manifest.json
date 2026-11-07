@@ -1,0 +1,19 @@
+{
+  "provider": "Coinbase Exchange public candles",
+  "protocol_sha256": "301460c24ee6c14b3650ac306e64c66f4a104839d67b5651ebb82984695732d4",
+  "downloaded_at_utc": "2026-11-07T18:07:26.101370+00:00",
+  "files": {
+    "BTC-USD": {
+      "rows": 16896,
+      "sha256": "73d41be6351d30adab66d52b98ae24a3cb4da4d5c900162e1c9a27a9a013ad55"
+    },
+    "ETH-USD": {
+      "rows": 16896,
+      "sha256": "b802a9edaab4e6fc5d691af603bdba77008e30bc7d00475013652b380b915cdb"
+    },
+    "SOL-USD": {
+      "rows": 16896,
+      "sha256": "0be1620d2f507e2304ee70f9da3ffefd42a5b0a47e0271893d7dbda1d200d6a0"
+    }
+  }
+}

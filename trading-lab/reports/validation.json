@@ -1,0 +1,104 @@
+{
+  "generated_at_utc": "2026-11-07T18:07:27.494590+00:00",
+  "protocol_sha256": "301460c24ee6c14b3650ac306e64c66f4a104839d67b5651ebb82984695732d4",
+  "provider": "Coinbase Exchange public candles",
+  "interval_minutes": 15,
+  "rows_per_asset": 16896,
+  "symbols": [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD"
+  ],
+  "boundaries_utc": {
+    "start": "2026-05-09T00:00:00+00:00",
+    "validation_start": "2026-08-22T14:15:00+00:00",
+    "sealed_holdout_start": "2026-09-26T19:00:00+00:00",
+    "end_exclusive": "2026-11-01T00:00:00+00:00"
+  },
+  "development": {
+    "ema_cross": {
+      "initial_usd": 1000,
+      "final_usd": 979.8414938021718,
+      "net_profit_usd": -20.15850619782816,
+      "return_pct": -2.0158506197828108,
+      "trades": 28,
+      "wins": 2,
+      "win_rate_pct": 7.142857142857143,
+      "profit_factor": 0.07191245342011209,
+      "mean_net_pnl_usd": -0.7199466499224325,
+      "block_bootstrap_mean_95pct_usd": [
+        -0.8598749957372301,
+        -0.5319823074586097
+      ],
+      "max_drawdown_pct": 2.01585166921332,
+      "mean_exposure_pct": 0.3714481402243776,
+      "total_protection_triggered": true,
+      "mean_target_move_pct": 14.358462432842883
+    },
+    "channel_breakout": {
+      "initial_usd": 1000,
+      "final_usd": 979.8500491727278,
+      "net_profit_usd": -20.149950827272164,
+      "return_pct": -2.014995082727211,
+      "trades": 25,
+      "wins": 2,
+      "win_rate_pct": 8.0,
+      "profit_factor": 0.02205116715966197,
+      "mean_net_pnl_usd": -0.8059980330908738,
+      "block_bootstrap_mean_95pct_usd": [
+        -0.959023517487886,
+        -0.6454656334368135
+      ],
+      "max_drawdown_pct": 2.014995082727211,
+      "mean_exposure_pct": 0.1493797512336829,
+      "total_protection_triggered": true,
+      "mean_target_move_pct": 14.52292609839474
+    },
+    "trend_pullback": {
+      "initial_usd": 1000,
+      "final_usd": 979.3797491126371,
+      "net_profit_usd": -20.620250887362886,
+      "return_pct": -2.0620250887362856,
+      "trades": 24,
+      "wins": 0,
+      "win_rate_pct": 0.0,
+      "profit_factor": 0.0,
+      "mean_net_pnl_usd": -0.8591771203067973,
+      "block_bootstrap_mean_95pct_usd": [
+        -0.9141599270771353,
+        -0.8127724464020009
+      ],
+      "max_drawdown_pct": 2.0620250887362856,
+      "mean_exposure_pct": 0.11043496814337615,
+      "total_protection_triggered": true,
+      "mean_target_move_pct": 14.067487713887195
+    }
+  },
+  "selected_on_development": null,
+  "validation": {},
+  "stress": {},
+  "benchmarks": {
+    "no_trade": {
+      "return_pct": 0
+    },
+    "passive_20pct_development": {
+      "final_usd": 994.8490742740026,
+      "net_profit_usd": -5.150925725997354,
+      "return_pct": -0.5150925725997402
+    }
+  },
+  "sealed_holdout": {
+    "rows_per_asset": 3380,
+    "evaluated": false,
+    "eligible_for_future_one_time_evaluation": false
+  },
+  "live_trading_enabled": false,
+  "decision": "NO_CANDIDATE_APPROVED",
+  "limitations": [
+    "Candidates use 15-minute bars and are not the deployed 5-minute strategy.",
+    "Coinbase supplies historical prices; costs are assumptions, not verified execution fees.",
+    "Strategies and risk rules are hypotheses, not guarantees.",
+    "Historical qualification alone never authorizes real-money execution.",
+    "Block bootstrap uses blocks of five trades and does not establish a future success probability."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "live_trading_enabled": false,
+  "software_tests_passed": true,
+  "complete_historical_data": true,
+  "historical_candidate_qualified": false,
+  "sealed_holdout_evaluated": false,
+  "prospective_paper_validation_completed": false,
+  "broker_execution_and_reconciliation_verified": false,
+  "account_costs_verified": false,
+  "explicit_real_capital_authorization": false,
+  "decision": "NO_GO",
+  "note": "Completing software does not by itself authorize real-money trading."
+}

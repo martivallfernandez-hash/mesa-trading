@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "registered_before_download": true,
+  "source": "Coinbase Exchange public candles",
+  "source_role": "Historical research only; not the deployed Kraken data source",
+  "symbols": ["BTC-USD", "ETH-USD", "SOL-USD"],
+  "start_utc": "2026-05-01T00:00:00Z",
+  "end_utc_exclusive": "2026-11-01T00:00:00Z",
+  "interval_seconds": 900,
+  "split": {"development": 0.6, "validation": 0.2, "sealed_holdout": 0.2},
+  "candidates": ["ema_cross", "channel_breakout", "trend_pullback"],
+  "risk": {"initial_usd": 1000, "risk_fraction": 0.001, "max_exposure": 0.2, "max_positions": 1, "daily_loss_pause": 0.005, "total_drawdown_pause": 0.02, "stop_atr": 1.5, "target_atr_multiple": 2, "net_target_usd": 10.01, "max_hold_bars": 96},
+  "costs": {"base": {"fee_per_side": 0.004, "slippage_per_side": 0.001}, "stress": {"fee_per_side": 0.006, "slippage_per_side": 0.002}},
+  "selection_on_development_only": {"min_closed_trades": 30, "min_profit_factor": 1.1, "net_profit_positive": true, "max_drawdown_fraction": 0.02},
+  "holdout_access": "Do not inspect the final 20 percent unless the development-selected candidate also passes validation and stress checks. Log every access. These 15-minute candidates differ from the deployed 5-minute strategy.",
+  "live_trading_enabled": false
+}
