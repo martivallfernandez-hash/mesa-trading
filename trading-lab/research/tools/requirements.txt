@@ -1,0 +1,2 @@
+# Biblioteca aprobada para contrastar el motor. No se instala en el Worker.
+backtesting==0.6.6

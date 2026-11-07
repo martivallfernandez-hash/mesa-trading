@@ -1,4 +1,5 @@
 import {SYMBOLS,CFG,seed,advance,validate,view,equity,closePosition,applyConservative} from './engine.mjs';
+import {botCatalog,liveQuotes,markPositions} from './live.mjs';
 import {PAGE} from './page.mjs';
 async function download(){
  const timeResponse=await fetch('https://api.kraken.com/0/public/Time',{signal:AbortSignal.timeout(20000)});if(!timeResponse.ok)throw Error('No se pudo consultar Kraken');const clock=await timeResponse.json();if(clock.error?.length)throw Error('Kraken no devuelve la hora');let now=clock.result.unixtime*1000;
@@ -15,7 +16,9 @@ export default {
  const path=new URL(request.url).pathname;
  try{
  if(path==='/')return new Response(PAGE,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'"}});
- if(path==='/api/state'&&request.method==='GET'){const {state}=await read(env);return json(view(state));}
+ if(path==='/api/state'&&request.method==='GET'){const {state}=await read(env);return json({...view(state),bots:botCatalog(state)});}
+ if(path==='/api/bots'&&request.method==='GET'){const {state}=await read(env);return json({bots:botCatalog(state),sharedCapital:true,realTradingEnabled:false});}
+ if(path==='/api/live'&&request.method==='GET'){const {state}=await read(env);const ticker=await liveQuotes();return json({...ticker,positions:markPositions(state,ticker)});}
  if(path==='/api/history.csv'&&request.method==='GET'){
  const {state}=await read(env);if(!state)return json({error:'Sin datos'},404);
  let lines=['symbol,timestamp_utc,open,high,low,close,volume'];for(const s of SYMBOLS)for(const r of state.history[s])lines.push([s,new Date(r.time).toISOString(),r.open,r.high,r.low,r.close,r.volume].join(','));
@@ -29,7 +32,7 @@ export default {
  if(path==='/api/tick'){
  const {series,now}=await download();let state=old?applyConservative(advance(old,series,now),now):seed(series,now);
  if(!old)state.curve=[{time:now,equity:CFG.initial}];
- await save(env,state,etag);return json(view(state));
+ await save(env,state,etag);return json({...view(state),bots:botCatalog(state)});
  }
  if(!old)return json({error:'Primero actualiza los datos'},409);
  let state=structuredClone(old);
@@ -40,7 +43,7 @@ export default {
  for(const s of Object.keys(state.positions))closePosition(state,s,series[s].at(-1).close,now,'emergencia_cierre_ficticio');
  state.curve.push({time:now,equity:state.cash});
  }
- state.revision++;await save(env,state,etag);return json(view(state));
+ state.revision++;await save(env,state,etag);return json({...view(state),bots:botCatalog(state)});
  }
  return json({error:'No encontrado'},404);
  }catch(error){return json({error:error.message,liveTrading:false},503);}

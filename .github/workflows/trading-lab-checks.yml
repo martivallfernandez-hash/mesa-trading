@@ -26,3 +26,15 @@ jobs:
         run: |
           node build.mjs
           node --check dist/server/index.js
+  independent-library:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: trading-lab
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Instalar biblioteca de investigación con versiones fijadas
+        run: python3 -m pip install -r research/tools/requirements.lock.txt
+      - name: Comprobar motor independiente con datos sintéticos
+        run: python3 research/tools/verify_backtesting.py
