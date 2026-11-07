@@ -1,5 +1,6 @@
 import {SYMBOLS,CFG,seed,advance,validate,view,equity,closePosition,applyConservative} from './engine.mjs';
 import {botCatalog,liveQuotes,markPositions} from './live.mjs';
+import {MT5_KEY,validateMT5Snapshot,goldReference} from './mt5.mjs';
 import {PAGE} from './page.mjs';
 async function download(){
  const timeResponse=await fetch('https://api.kraken.com/0/public/Time',{signal:AbortSignal.timeout(20000)});if(!timeResponse.ok)throw Error('No se pudo consultar Kraken');const clock=await timeResponse.json();if(clock.error?.length)throw Error('Kraken no devuelve la hora');let now=clock.result.unixtime*1000;
@@ -19,6 +20,9 @@ export default {
  if(path==='/api/state'&&request.method==='GET'){const {state}=await read(env);return json({...view(state),bots:botCatalog(state)});}
  if(path==='/api/bots'&&request.method==='GET'){const {state}=await read(env);return json({bots:botCatalog(state),sharedCapital:true,realTradingEnabled:false});}
  if(path==='/api/live'&&request.method==='GET'){const {state}=await read(env);const ticker=await liveQuotes();return json({...ticker,positions:markPositions(state,ticker)});}
+ if(path==='/api/gold'&&request.method==='GET')return json(await goldReference());
+ if(path==='/api/mt5'&&request.method==='GET'){if(!env.BUCKET)throw Error('Almacenamiento no disponible.');const obj=await env.BUCKET.get(MT5_KEY);return json(obj?{connected:true,snapshot:await obj.json(),executionEnabled:false}:{connected:false,executionEnabled:false});}
+ if(path==='/api/mt5/import'&&request.method==='POST'){const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Origen no permitido'},403);if(!env.BUCKET)throw Error('Almacenamiento no disponible.');if(Number(request.headers.get('Content-Length')||0)>1000000)return json({error:'Lectura demasiado grande'},413);const text=await request.text();if(text.length>1000000)return json({error:'Lectura demasiado grande'},413);const snapshot=validateMT5Snapshot(JSON.parse(text));const previous=await env.BUCKET.get(MT5_KEY);if(previous){const old=await previous.json();if(snapshot.generatedAt<=old.generatedAt)return json({error:'La lectura es anterior o ya se importó.'},409);}const result=await env.BUCKET.put(MT5_KEY,JSON.stringify(snapshot),{onlyIf:previous?{etagMatches:previous.etag}:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});if(!result)return json({error:'Otra lectura se ha guardado antes. Recarga.'},409);return json({connected:true,snapshot,executionEnabled:false});}
  if(path==='/api/history.csv'&&request.method==='GET'){
  const {state}=await read(env);if(!state)return json({error:'Sin datos'},404);
  let lines=['symbol,timestamp_utc,open,high,low,close,volume'];for(const s of SYMBOLS)for(const r of state.history[s])lines.push([s,new Date(r.time).toISOString(),r.open,r.high,r.low,r.close,r.volume].join(','));
