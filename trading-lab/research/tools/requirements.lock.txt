@@ -1,0 +1,14 @@
+backtesting==0.6.6
+bokeh==3.10.2
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+narwhals==2.28.0
+numpy==2.5.4
+packaging==26.3
+pandas==3.1.1
+pillow==13.0.0
+python-dateutil==4.0.0
+PyYAML==6.0.3
+tornado==6.6
+tzdata==2026.6
+xyzservices==2026.9.1

@@ -48,3 +48,45 @@ del usuario y límites de capital y pérdida acordados; no se pide ninguna clave
 La mesa y el escáner existentes del repositorio se conservan. Este laboratorio no
 modifica `escaner/`, sus credenciales, avisos, programación ni GitHub Pages. Las skills
 bajo `.agents/skills/` guían revisión y validación; no certifican rentabilidad.
+
+## Panel de varios bots y seguimiento v3
+
+La cuenta cripto mantiene su historial. El catálogo presenta Forex y oro como
+`pending_data`, sin saldo ni posibilidad de enviar órdenes. No se ha fingido una
+conexión de XAU/USD usando futuros GC=F ni se han duplicado los 1.000 USD iniciales.
+La fuente pública de Forex/oro probada devolvió `Edge: Too Many Requests`; queda
+pendiente contratar o conectar una fuente adecuada y validar el motor de cada mercado.
+
+Con el panel visible, el estado guardado se consulta cada cinco segundos y el ticker
+público de Kraken cada quince. La casilla activa un ciclo de simulación cada cinco
+minutos. Con el panel cerrado sigue vigente la tarea horaria. No se trata de un
+motor de ejecución de órdenes ni de un servicio de scalping en tiempo real.
+
+Las entradas y salidas incluyen hora simulada de la vela y hora de registro del ciclo.
+Los eventos antiguos no tienen una hora de recepción inventada. Las posiciones se
+valoran indicativamente con el bid y costes supuestos; ese valor no sustituye el
+saldo contable del simulador. Los GET de estado, catálogo y ticker no operan ni
+modifican la cuenta. Las escrituras de simulación siguen usando ETag.
+
+## Skills y biblioteca aprobadas
+
+Las cuatro skills propuestas quedan incorporadas como recursos de proyecto fijados
+en `.agents/skills-lock.json`: depuración sistemática (Superpowers), pruebas por
+propiedades, revisión diferencial y análisis dimensional (Trail of Bits). Se incluyen
+las dos dependencias documentales de depuración: TDD y verificación de finalización.
+Los wrappers locales remiten a fuentes completas, sus recursos y licencias bajo
+`.agents/vendor/`. No se ejecutaron sus scripts de instalación ni se concedió acceso
+a fondos. La instalación de recursos no equivale a haber ejecutado todas las auditorías.
+
+Backtesting.py 0.6.6 se instaló en un entorno de investigación separado del Worker.
+`research/tools/verify_backtesting.py` comprueba importación, ejecución en la apertura
+siguiente y efecto de costes sobre precios sintéticos. No demuestra rentabilidad ni
+se ha validado aún como segundo motor equivalente para toda la estrategia. El lockfile
+conserva las versiones de sus dependencias. La skill «learn» no ha sido identificada;
+no se ha instalado ninguna herramienta con ese nombre.
+
+La revisión visual en navegador sigue pendiente porque el entorno no dispone de
+`cua_repl.js`. Se comprobaron sintaxis del cliente, IDs únicos, funciones del servidor,
+cuentas persistentes y datos reales del ticker. Las skills están instaladas como
+recursos del repositorio, no como una conexión a fuentes de datos ni como una garantía
+de rentabilidad. La biblioteca independiente se verifica además en un job separado de CI.

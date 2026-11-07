@@ -1,0 +1,31 @@
+{
+  "approved_primary_skills": [
+    "systematic-debugging",
+    "property-based-testing",
+    "differential-review",
+    "dimensional-analysis"
+  ],
+  "supporting_skills": [
+    "test-driven-development",
+    "verification-before-completion"
+  ],
+  "sources": [
+    {
+      "repository": "https://github.com/obra/superpowers",
+      "commit": "22f0b463e7a5e579904dd6211a520321035526f7"
+    },
+    {
+      "repository": "https://github.com/trailofbits/skills",
+      "commit": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff"
+    }
+  ],
+  "research_library": {
+    "name": "backtesting",
+    "version": "0.6.6",
+    "environment": "isolated research virtual environment; not in the hosted Worker"
+  },
+  "not_identified": [
+    "learn"
+  ],
+  "live_trading_enabled": false
+}
