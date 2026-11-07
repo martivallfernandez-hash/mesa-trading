@@ -1,4 +1,4 @@
-import {SYMBOLS,CFG,seed,advance,validate,view,equity,closePosition,applyConservative} from './engine.mjs';
+import {SYMBOLS,CFG,seed,advance,validate,view,equity,closePosition,applyConservative,PRACTICE_CFG,PRACTICE_SESSION_ID,newPracticeSession} from './engine.mjs';
 import {botCatalog,liveQuotes,markPositions} from './live.mjs';
 import {MT5_KEY,validateMT5Snapshot,goldReference} from './mt5.mjs';
 import {PAGE} from './page.mjs';
@@ -21,6 +21,8 @@ export default {
  if(path==='/api/bots'&&request.method==='GET'){const {state}=await read(env);return json({bots:botCatalog(state),sharedCapital:true,realTradingEnabled:false});}
  if(path==='/api/live'&&request.method==='GET'){const {state}=await read(env);const ticker=await liveQuotes();return json({...ticker,positions:markPositions(state,ticker)});}
  if(path==='/api/gold'&&request.method==='GET')return json(await goldReference());
+ if(path==='/api/practice/previous'&&request.method==='GET'){const {state}=await read(env);if(!state?.practiceArchiveKey)return json({error:'No hay sesión anterior archivada.'},404);const archive=await env.BUCKET.get(state.practiceArchiveKey);if(!archive)return json({error:'Archivo no disponible.'},404);return new Response(JSON.stringify(await archive.json()),{headers:{'Content-Type':'application/json','Cache-Control':'no-store','Content-Disposition':'attachment; filename=sesion-anterior.json'}});}
+ if(path==='/api/practice/start-10000'&&request.method==='POST'){const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Origen no permitido'},403);const {state:old,etag}=await read(env);if(old?.practiceSessionId===PRACTICE_SESSION_ID)return json({...view(old),bots:botCatalog(old)});const {series,now}=await download();let archiveKey=null;if(old){archiveKey='paper/archives/before-demo-usd10000-'+old.startedAt+'-'+(old.revision||0)+'.json';const existing=await env.BUCKET.get(archiveKey);if(!existing){const archived=await env.BUCKET.put(archiveKey,JSON.stringify({archivedAt:now,reason:'Cambio solicitado a demo 10000 USD y riesgo diario 150 USD',state:old}),{onlyIf:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});if(!archived)throw Error('No se pudo confirmar el archivo de la sesión anterior.');}}const state=newPracticeSession(series,now,old,archiveKey);await save(env,state,etag);return json({...view(state),bots:botCatalog(state)});}
  if(path==='/api/mt5'&&request.method==='GET'){if(!env.BUCKET)throw Error('Almacenamiento no disponible.');const obj=await env.BUCKET.get(MT5_KEY);return json(obj?{connected:true,snapshot:await obj.json(),executionEnabled:false}:{connected:false,executionEnabled:false});}
  if(path==='/api/mt5/import'&&request.method==='POST'){const origin=request.headers.get('Origin');if(origin&&origin!==new URL(request.url).origin)return json({error:'Origen no permitido'},403);if(!env.BUCKET)throw Error('Almacenamiento no disponible.');if(Number(request.headers.get('Content-Length')||0)>1000000)return json({error:'Lectura demasiado grande'},413);const text=await request.text();if(text.length>1000000)return json({error:'Lectura demasiado grande'},413);const snapshot=validateMT5Snapshot(JSON.parse(text));const previous=await env.BUCKET.get(MT5_KEY);if(previous){const old=await previous.json();if(snapshot.generatedAt<=old.generatedAt)return json({error:'La lectura es anterior o ya se importó.'},409);}const result=await env.BUCKET.put(MT5_KEY,JSON.stringify(snapshot),{onlyIf:previous?{etagMatches:previous.etag}:{etagDoesNotMatch:'*'},httpMetadata:{contentType:'application/json'}});if(!result)return json({error:'Otra lectura se ha guardado antes. Recarga.'},409);return json({connected:true,snapshot,executionEnabled:false});}
  if(path==='/api/history.csv'&&request.method==='GET'){
@@ -34,8 +36,8 @@ export default {
  if(!['/api/tick','/api/pause','/api/resume','/api/stop'].includes(path))return json({error:'Ruta no disponible'},404);
  const {state:old,etag}=await read(env);
  if(path==='/api/tick'){
- const {series,now}=await download();let state=old?applyConservative(advance(old,series,now),now):seed(series,now);
- if(!old)state.curve=[{time:now,equity:CFG.initial}];
+ const {series,now}=await download();let state=old?applyConservative(advance(old,series,now),now):newPracticeSession(series,now);
+ if(!old)state.curve=[{time:now,equity:PRACTICE_CFG.initial}];
  await save(env,state,etag);return json({...view(state),bots:botCatalog(state)});
  }
  if(!old)return json({error:'Primero actualiza los datos'},409);

@@ -118,3 +118,30 @@ GC=F como si fuera XAU/USD. La disponibilidad de instrumentos depende del bróke
 Las pruebas del lector MT5 usan un terminal simulado porque este entorno es Linux y
 no tiene acceso al ordenador Windows del usuario. La conexión efectiva y el instalador
 Windows siguen pendientes de comprobar allí. No se han enviado órdenes a MT5.
+
+## Sesión demo de 10.000 USD y presupuesto diario de 150 USD
+
+A petición del usuario, el perfil `demo-usd10000-daily150-v1` inicia una nueva sesión
+ficticia de 10.000 USD. No modifica la cuenta MT5 ni habilita órdenes. El cambio se
+activa una sola vez mediante una operación privada idempotente: primero guarda la
+sesión anterior completa y después cambia el estado activo mediante ETag. Repetir
+la petición no vuelve a poner el saldo a 10.000. Si falla el archivo o hay conflicto,
+la sesión anterior no se sustituye. El panel permite descargar el archivo anterior.
+Sus posiciones quedan como fotografía de la sesión detenida, sin trasladarse a la
+nueva sesión ni inventar cierres o beneficios.
+
+El usuario fijó 150 USD diarios y ninguna cuota fija por entrada. El tamaño se
+calcula con el stop, los costes supuestos y el riesgo restante. Se descuentan las
+pérdidas realizadas del día y se reserva el riesgo previsto de los stops abiertos;
+las ganancias no reponen pérdidas consumidas. La exposición sigue limitada al 20 %
+y hay como máximo una posición. La protección global del 2 % desde máximo también
+limita el riesgo disponible y permanece bloqueada al cambiar de día. El día de
+riesgo se calcula en Europe/Madrid. Los huecos y costes reales pueden superar esos
+presupuestos, que no son garantías de pérdida máxima.
+
+El perfil anterior y sus pruebas históricas de 1.000 USD se conservan. No se han
+reescrito resultados para presentar el cambio de capital como rentabilidad. La
+sesión nueva comienza con velas actuales y no crea operaciones anteriores al inicio.
+Los 10.000 USD son un presupuesto único: Forex y oro continúan sin capital asignado
+ni ejecución mientras no se complete su conexión y validación. La tarea horaria
+existente actualiza la cuenta activa sin reiniciarla.
