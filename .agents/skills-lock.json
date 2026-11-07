@@ -3,7 +3,8 @@
     "systematic-debugging",
     "property-based-testing",
     "differential-review",
-    "dimensional-analysis"
+    "dimensional-analysis",
+    "find-skills"
   ],
   "supporting_skills": [
     "test-driven-development",
@@ -17,6 +18,10 @@
     {
       "repository": "https://github.com/trailofbits/skills",
       "commit": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff"
+    },
+    {
+      "repository": "https://github.com/vercel-labs/skills",
+      "commit": "d3701c11b1101251af14c9d148f026e1a47ebe17"
     }
   ],
   "research_library": {
@@ -24,8 +29,7 @@
     "version": "0.6.6",
     "environment": "isolated research virtual environment; not in the hosted Worker"
   },
-  "not_identified": [
-    "learn"
-  ],
-  "live_trading_enabled": false
+  "not_identified": [],
+  "live_trading_enabled": false,
+  "clarification": "Find Skills installed by explicit request; LEAN remains a separate trading framework and is not installed."
 }

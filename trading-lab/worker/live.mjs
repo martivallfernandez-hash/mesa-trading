@@ -1,7 +1,7 @@
 export const BOT_CATALOG=[
  {id:'crypto',name:'Cripto · Prudente',market:'Criptomonedas',mode:'paper',symbols:['BTCUSD','ETHUSD','SOLUSD'],provider:'Kraken',executionEnabled:true,description:'Cuenta ficticia existente; conserva su saldo y operaciones.'},
- {id:'forex',name:'Forex · Investigación',market:'Divisas',mode:'pending_data',symbols:['EURUSD','GBPUSD','AUDUSD'],provider:null,executionEnabled:false,description:'Pendiente de una fuente disponible y de validar costes, horarios y simulación. Sin capital asignado ni operaciones.'},
- {id:'gold',name:'Oro · Investigación',market:'Oro',mode:'pending_data',symbols:['XAUUSD'],provider:null,executionEnabled:false,description:'Pendiente de datos de oro al contado y de especificaciones del instrumento. No se sustituye XAU/USD por futuros GC=F. Sin capital asignado.'}
+ {id:'forex',name:'Forex · Investigación',market:'Divisas',mode:'pending_mt5',symbols:['EURUSD','GBPUSD','AUDUSD'],provider:'MT5 demo (pendiente de lectura)',executionEnabled:false,description:'Conector de lectura MT5 demo preparado. Falta recibir los precios, velas y contratos de tu terminal Windows; todavía no envía órdenes.'},
+ {id:'gold',name:'Oro · Investigación',market:'Oro',mode:'reference_only',symbols:['XAUUSD'],provider:'Gold API / MT5 demo pendiente',executionEnabled:false,description:'Referencia pública de XAU/USD disponible. Para simular y ejecutar en MT5 faltan velas, bid/ask y contrato del bróker. Sin capital asignado.'}
 ];
 export function botCatalog(state){return BOT_CATALOG.map(bot=>({...bot,status:bot.id==='crypto'?(!state?'uninitialized':state.protectionHalted?'protected':state.paused?'paused':state.halted?'daily_pause':'paper_active'):'pending_data',capitalAssignedUSD:bot.id==='crypto'&&state?state.config?.initial??1000:0,openPositions:bot.id==='crypto'&&state?Object.keys(state.positions).length:0,realTradingEnabled:false}));}
 export function parseTicker(payload,retrievedAt){

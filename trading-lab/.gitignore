@@ -4,3 +4,6 @@ __pycache__/
 dist/
 node_modules/
 .env*
+
+.mt5-env/
+mt5-demo-snapshot.json

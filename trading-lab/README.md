@@ -90,3 +90,31 @@ La revisión visual en navegador sigue pendiente porque el entorno no dispone de
 cuentas persistentes y datos reales del ticker. Las skills están instaladas como
 recursos del repositorio, no como una conexión a fuentes de datos ni como una garantía
 de rentabilidad. La biblioteca independiente se verifica además en un job separado de CI.
+
+## Conexión de MT5 demo y Find Skills
+
+Find Skills de Vercel queda instalada como skill de proyecto con la fuente completa,
+licencia y commit fijados. No autoriza instalar automáticamente otras skills.
+
+El usuario confirmó cuenta demo y MT5 en Windows y móvil. El centro de Replit fue
+creado y se envió una actualización para priorizar MT5 sobre OANDA. Replit continúa
+construyéndolo; no se ha verificado un receptor automático, ni publicado o contratado
+un despliegue. Replit no sustituye al terminal Windows para esta integración.
+
+`connectors/` contiene un lector de solo consulta para Windows, guía y asistentes de
+preparación y lectura. Comprueba `ACCOUNT_TRADE_MODE_DEMO` antes de consultar precios,
+rechaza cuentas reales y de concurso y no incorpora funciones de órdenes. La primera
+lectura se importa en la pestaña Conexión MT5 del panel privado; todavía no es una
+sincronización continua. No se exporta login ni contraseña y el identificador de
+cuenta se seudonimiza. Las importaciones rechazan lecturas repetidas o antiguas y
+no modifican la cartera simulada. El receptor valida el formato de una lectura
+declarada demo; sin conexión directa al bróker no certifica su autenticidad.
+
+La referencia pública de oro de Gold API sí responde. Se muestra como referencia
+indicativa sin bid/ask, histórico ni capacidad de ejecución. Forex y oro siguen sin
+órdenes ni capital asignado hasta recibir y validar datos del terminal. No se usa
+GC=F como si fuera XAU/USD. La disponibilidad de instrumentos depende del bróker.
+
+Las pruebas del lector MT5 usan un terminal simulado porque este entorno es Linux y
+no tiene acceso al ordenador Windows del usuario. La conexión efectiva y el instalador
+Windows siguen pendientes de comprobar allí. No se han enviado órdenes a MT5.
